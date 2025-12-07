@@ -1,0 +1,25 @@
+{
+  "name": "lvyou-device-manager",
+  "version": "1.0.0",
+  "description": "管理服务 - 接收开发板推送消息并管理设备信息",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "keywords": [
+    "lvyou",
+    "iot",
+    "device-manager",
+    "4g-module"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "sql.js": "^1.10.3",
+    "ws": "^8.18.3"
+  }
+}
