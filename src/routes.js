@@ -1044,6 +1044,29 @@ router.get('/sms', (req, res) => {
 });
 
 /**
+ * GET /api/sms/latest-text
+ * 获取最新短信（纯文本格式，适合快捷指令）
+ */
+router.get('/sms/latest-text', (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 2;
+        const direction = req.query.direction || 'in';
+        
+        let sql = 'SELECT * FROM sms_records WHERE direction = ? ORDER BY created_at DESC LIMIT ?';
+        const records = db.prepare(sql).all(direction, limit);
+        
+        const text = records.map(r => 
+            `来自: ${r.phone_num}\n时间: ${r.sms_time || r.created_at}\n内容: ${r.content}`
+        ).join('\n\n----------------\n\n');
+        
+        res.set('Content-Type', 'text/plain; charset=utf-8');
+        res.send(text || '暂无新短信');
+    } catch (error) {
+        res.status(500).send('获取失败: ' + error.message);
+    }
+});
+
+/**
  * GET /api/sms/:devId
  * 获取指定设备的短信记录
  */
