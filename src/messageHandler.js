@@ -193,12 +193,13 @@ class MessageHandler {
         if (type >= 620 && type <= 623) {
             callType = 'outgoing';
         }
+        
+        // 判断是否为未接来电
         if (type === 603) {
-            // 未接来电
             const hasAnswered = db.prepare(`
                 SELECT id FROM call_records 
-                WHERE dev_id = ? AND phone_num = ? AND call_type = 'incoming'
-                AND start_time > datetime('now', '-5 minutes')
+                WHERE dev_id = ? AND phone_num = ? AND msg_type = 602
+                AND created_at > datetime('now', '-5 minutes')
             `).get(devId, phNum);
             
             if (!hasAnswered) {
@@ -206,27 +207,25 @@ class MessageHandler {
             }
         }
 
-        // 记录通话
-        if (type === 603 || type === 623) {
-            // 通话结束，记录完整通话记录
-            const duration = telEndTs && telStartTs ? telEndTs - telStartTs : 0;
-            
-            // 开发板推送的时间戳已经是北京时间，直接存储时间戳
-            const stmt = db.prepare(`
-                INSERT INTO call_records (dev_id, slot, msisdn, phone_num, call_type, start_time, end_time, duration)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            stmt.run(
-                devId, 
-                slot || 1, 
-                msIsdn || '', 
-                phNum || '', 
-                callType,
-                telStartTs || Math.floor(Date.now() / 1000),
-                telEndTs || Math.floor(Date.now() / 1000),
-                duration
-            );
-        }
+        // 记录所有通话状态消息(参考短信记录的做法)
+        const duration = telEndTs && telStartTs ? telEndTs - telStartTs : 0;
+        const currentTime = Math.floor(Date.now() / 1000);
+        
+        const stmt = db.prepare(`
+            INSERT INTO call_records (dev_id, slot, msisdn, phone_num, msg_type, call_type, start_time, end_time, duration)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(
+            devId, 
+            slot || 1, 
+            msIsdn || '', 
+            phNum || '', 
+            type,  // 存储消息类型代码
+            callType,
+            telStartTs || currentTime,
+            telEndTs || currentTime,
+            duration || 0
+        );
 
         this.ensureDeviceExists(devId);
         this.updateDeviceLastSeen(devId);

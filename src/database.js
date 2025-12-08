@@ -96,6 +96,7 @@ async function initDatabase() {
             slot INTEGER NOT NULL,
             msisdn TEXT DEFAULT '',
             phone_num TEXT NOT NULL,
+            msg_type INTEGER NOT NULL,
             call_type TEXT NOT NULL,
             start_time TEXT,
             end_time TEXT,
@@ -103,6 +104,13 @@ async function initDatabase() {
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         )
     `);
+    
+    // 为旧数据添加msg_type列(如果不存在)
+    try {
+        db.run(`ALTER TABLE call_records ADD COLUMN msg_type INTEGER DEFAULT 603`);
+    } catch (e) {
+        // 列已存在,忽略错误
+    }
 
     // 创建索引
     db.run(`CREATE INDEX IF NOT EXISTS idx_messages_dev_id ON messages(dev_id)`);

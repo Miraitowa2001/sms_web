@@ -503,7 +503,7 @@ router.post('/sms/batch-delete', (req, res) => {
  */
 router.get('/sms', (req, res) => {
     try {
-        const { devId, phoneNum, direction, page = 1, limit = 50 } = req.query;
+        const { devId, phoneNum, direction, dateStart, dateEnd, page = 1, limit = 50 } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM sms_records WHERE 1=1';
@@ -524,6 +524,16 @@ router.get('/sms', (req, res) => {
             sql += ' AND direction = ?';
             countSql += ' AND direction = ?';
             params.push(direction);
+        }
+        if (dateStart) {
+            sql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
+            countSql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
+            params.push(dateStart);
+        }
+        if (dateEnd) {
+            sql += ' AND DATE(COALESCE(sms_time, created_at)) <= ?';
+            countSql += ' AND DATE(COALESCE(sms_time, created_at)) <= ?';
+            params.push(dateEnd);
         }
         
         sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -606,7 +616,7 @@ router.post('/calls/batch-delete', (req, res) => {
  */
 router.get('/calls', (req, res) => {
     try {
-        const { devId, phoneNum, callType, page = 1, limit = 50 } = req.query;
+        const { devId, phoneNum, callType, dateStart, dateEnd, page = 1, limit = 50 } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM call_records WHERE 1=1';
@@ -627,6 +637,16 @@ router.get('/calls', (req, res) => {
             sql += ' AND call_type = ?';
             countSql += ' AND call_type = ?';
             params.push(callType);
+        }
+        if (dateStart) {
+            sql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
+            countSql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
+            params.push(dateStart);
+        }
+        if (dateEnd) {
+            sql += ' AND DATE(COALESCE(start_time, created_at)) <= ?';
+            countSql += ' AND DATE(COALESCE(start_time, created_at)) <= ?';
+            params.push(dateEnd);
         }
         
         sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -679,7 +699,7 @@ router.post('/messages/batch-delete', (req, res) => {
  */
 router.get('/messages', (req, res) => {
     try {
-        const { devId, type, page = 1, limit = 100 } = req.query;
+        const { devId, type, msgType, msgCategory, dateStart, dateEnd, page = 1, limit = 100 } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM messages WHERE 1=1';
@@ -691,10 +711,44 @@ router.get('/messages', (req, res) => {
             countSql += ' AND dev_id = ?';
             params.push(devId);
         }
-        if (type) {
-            sql += ' AND type = ?';
-            countSql += ' AND type = ?';
-            params.push(parseInt(type));
+        
+        // 支持按消息大类筛选
+        if (msgCategory) {
+            const categoryRanges = {
+                'network': [100, 102],      // 联网消息
+                'sim': [202, 209],          // SIM卡消息
+                'sms': [501, 502],          // 短信消息
+                'call': [601, 642],         // 电话消息(包括601-623和641-642)
+                'call_ctrl': [681, 689],    // 电话控制回应
+                'command': [401, 402],      // 命令应答
+                'module': [301, 301]        // 通讯模组
+            };
+            
+            if (categoryRanges[msgCategory]) {
+                const [min, max] = categoryRanges[msgCategory];
+                sql += ' AND type >= ? AND type <= ?';
+                countSql += ' AND type >= ? AND type <= ?';
+                params.push(min, max);
+            }
+        }
+        // 支持按具体消息类型筛选
+        else {
+            const messageType = type || msgType;
+            if (messageType) {
+                sql += ' AND type = ?';
+                countSql += ' AND type = ?';
+                params.push(parseInt(messageType));
+            }
+        }
+        if (dateStart) {
+            sql += ' AND DATE(created_at) >= ?';
+            countSql += ' AND DATE(created_at) >= ?';
+            params.push(dateStart);
+        }
+        if (dateEnd) {
+            sql += ' AND DATE(created_at) <= ?';
+            countSql += ' AND DATE(created_at) <= ?';
+            params.push(dateEnd);
         }
         
         sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';

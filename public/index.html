@@ -252,17 +252,32 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
         }
         
-        .search-box input, .search-box select {
+        .search-box input, .search-box select, .search-box button {
             padding: 8px 12px;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
             font-size: 14px;
         }
         
-        .search-box input {
+        .search-box input[type="text"] {
             flex: 1;
+            min-width: 150px;
+        }
+        
+        .search-box input[type="date"] {
+            min-width: 140px;
+        }
+        
+        .search-box select {
+            min-width: 120px;
+        }
+        
+        /* 消息日志的消息类型选择器需要更宽 */
+        #log-msg-type {
+            min-width: 200px;
         }
 
         .sim-info {
@@ -996,10 +1011,11 @@
 
             /* 通话表格适配 */
             #calls-table td:nth-of-type(2)::before { content: "设备/SIM"; }
-            #calls-table td:nth-of-type(3)::before { content: "类型"; }
-            #calls-table td:nth-of-type(4)::before { content: "对方号码"; }
-            #calls-table td:nth-of-type(5)::before { content: "开始时间"; }
-            #calls-table td:nth-of-type(6)::before { content: "时长"; }
+            #calls-table td:nth-of-type(3)::before { content: "消息类型"; }
+            #calls-table td:nth-of-type(4)::before { content: "通话分类"; }
+            #calls-table td:nth-of-type(5)::before { content: "对方号码"; }
+            #calls-table td:nth-of-type(6)::before { content: "时间"; }
+            #calls-table td:nth-of-type(7)::before { content: "时长"; }
 
             /* 日志表格适配 */
             #logs-table td:nth-of-type(2)::before { content: "设备/SIM"; }
@@ -1293,7 +1309,10 @@
                             <option value="in">收到</option>
                             <option value="out">发出</option>
                         </select>
+                        <input type="date" id="sms-date-start" placeholder="开始日期">
+                        <input type="date" id="sms-date-end" placeholder="结束日期">
                         <button class="btn btn-primary" onclick="loadSms()">搜索</button>
+                        <button class="btn btn-secondary btn-sm" onclick="clearSmsFilter()">清空</button>
                     </div>
                     <div id="sms-batch-toolbar" class="batch-toolbar hidden">
                         <div class="select-info">已选择 <strong id="sms-selected-count">0</strong> 条记录</div>
@@ -1343,7 +1362,10 @@
                             <option value="outgoing">去电</option>
                             <option value="missed">未接</option>
                         </select>
+                        <input type="date" id="call-date-start" placeholder="开始日期">
+                        <input type="date" id="call-date-end" placeholder="结束日期">
                         <button class="btn btn-primary" onclick="loadCalls()">搜索</button>
+                        <button class="btn btn-secondary btn-sm" onclick="clearCallsFilter()">清空</button>
                     </div>
                     <div id="calls-batch-toolbar" class="batch-toolbar hidden">
                         <div class="select-info">已选择 <strong id="calls-selected-count">0</strong> 条记录</div>
@@ -1359,14 +1381,15 @@
                                 <tr>
                                     <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="calls-select-all" onchange="toggleSelectAll('calls')"></th>
                                     <th>设备/SIM卡</th>
-                                    <th>类型</th>
+                                    <th>消息类型</th>
+                                    <th>通话分类</th>
                                     <th>对方号码</th>
-                                    <th>开始时间</th>
+                                    <th>时间</th>
                                     <th>时长</th>
                                 </tr>
                             </thead>
                             <tbody id="calls-table">
-                                <tr><td colspan="6" class="loading">加载中...</td></tr>
+                                <tr><td colspan="7" class="loading">加载中...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1385,6 +1408,65 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <div class="search-box">
+                        <select id="log-msg-type">
+                            <option value="">全部消息类型</option>
+                            <optgroup label="━━ 按大类筛选 ━━">
+                                <option value="network">📡 所有联网消息 (100-102)</option>
+                                <option value="sim">📱 所有SIM卡消息 (202-209)</option>
+                                <option value="sms">💬 所有短信消息 (501-502)</option>
+                                <option value="call">📞 所有电话消息 (601-642)</option>
+                                <option value="call_ctrl">🎛️ 所有电话控制 (681-689)</option>
+                                <option value="command">⚙️ 所有命令应答 (401-402)</option>
+                                <option value="module">🔌 通讯模组消息 (301)</option>
+                            </optgroup>
+                            <optgroup label="━━ 联网消息 ━━">
+                                <option value="100">　100 - WIFI已联网</option>
+                                <option value="101">　101 - 卡槽1已联网</option>
+                                <option value="102">　102 - 卡槽2已联网</option>
+                            </optgroup>
+                            <optgroup label="━━ SIM卡消息 ━━">
+                                <option value="202">　202 - SIM卡基站注册中</option>
+                                <option value="203">　203 - SIM卡ID已获取</option>
+                                <option value="204">　204 - SIM卡已就绪</option>
+                                <option value="205">　205 - SIM卡已弹出</option>
+                                <option value="209">　209 - SIM卡异常</option>
+                            </optgroup>
+                            <optgroup label="━━ 短信消息 ━━">
+                                <option value="501">　501 - 新短信</option>
+                                <option value="502">　502 - 短信外发成功</option>
+                            </optgroup>
+                            <optgroup label="━━ 电话消息 ━━">
+                                <option value="601">　601 - 来电振铃</option>
+                                <option value="602">　602 - 来电接通</option>
+                                <option value="603">　603 - 对方挂断来电</option>
+                                <option value="620">　620 - 去电拨号中</option>
+                                <option value="621">　621 - 去电对方振铃中</option>
+                                <option value="622">　622 - 去电已接通</option>
+                                <option value="623">　623 - 去电已挂断</option>
+                                <option value="641">　641 - 通话中本地按键</option>
+                                <option value="642">　642 - 通话中远程按键</option>
+                            </optgroup>
+                            <optgroup label="━━ 电话控制应答 ━━">
+                                <option value="681">　681 - 外呼拨号成功</option>
+                                <option value="682">　682 - 外呼拨号失败</option>
+                                <option value="684">　684 - 接听成功</option>
+                                <option value="685">　685 - 接听失败</option>
+                                <option value="687">　687 - TTS播放成功</option>
+                                <option value="688">　688 - TTS播放失败</option>
+                                <option value="689">　689 - TTS播放结束</option>
+                            </optgroup>
+                            <optgroup label="━━ 其他消息 ━━">
+                                <option value="301">　301 - 通讯模组错误</option>
+                                <option value="401">　401 - 命令已收到</option>
+                                <option value="402">　402 - 命令已处理</option>
+                            </optgroup>
+                        </select>
+                        <input type="date" id="log-date-start" placeholder="开始日期">
+                        <input type="date" id="log-date-end" placeholder="结束日期">
+                        <button class="btn btn-primary" onclick="loadLogs()">搜索</button>
+                        <button class="btn btn-secondary btn-sm" onclick="clearLogsFilter()">清空</button>
+                    </div>
                     <div id="logs-batch-toolbar" class="batch-toolbar hidden">
                         <div class="select-info">已选择 <strong id="logs-selected-count">0</strong> 条记录</div>
                         <div class="batch-actions">
@@ -2123,11 +2205,15 @@
             
             const phoneNum = document.getElementById('sms-search').value;
             const direction = document.getElementById('sms-direction').value;
+            const dateStart = document.getElementById('sms-date-start').value;
+            const dateEnd = document.getElementById('sms-date-end').value;
             
             try {
                 let url = `${API_BASE}/api/sms?limit=100`;
                 if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                 if (direction) url += `&direction=${direction}`;
+                if (dateStart) url += `&dateStart=${dateStart}`;
+                if (dateEnd) url += `&dateEnd=${dateEnd}`;
                 
                 const res = await apiFetch(url);
                 const data = await res.json();
@@ -2163,11 +2249,15 @@
             
             const phoneNum = document.getElementById('call-search').value;
             const callType = document.getElementById('call-type').value;
+            const dateStart = document.getElementById('call-date-start').value;
+            const dateEnd = document.getElementById('call-date-end').value;
             
             try {
                 let url = `${API_BASE}/api/calls?limit=100`;
                 if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                 if (callType) url += `&callType=${callType}`;
+                if (dateStart) url += `&dateStart=${dateStart}`;
+                if (dateEnd) url += `&dateEnd=${dateEnd}`;
                 
                 const res = await apiFetch(url);
                 const data = await res.json();
@@ -2178,6 +2268,7 @@
                         <tr data-id="${call.id}">
                             <td><input type="checkbox" class="row-checkbox" onchange="onRowSelect('calls')"></td>
                             <td>${formatDeviceSimInfo(call.dev_id, call.slot, call.msisdn)}</td>
+                            <td>${getCallMsgTypeText(call.msg_type || 603)}</td>
                             <td>${getCallTypeText(call.call_type)}</td>
                             <td>${call.phone_num}</td>
                             <td>${formatBeijingTime(call.start_time)}</td>
@@ -2186,11 +2277,11 @@
                     `).join('');
                 } else {
                     currentCallsData = [];
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">暂无通话记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-message">暂无通话记录</td></tr>';
                 }
             } catch (error) {
                 console.error('加载通话失败:', error);
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-message">加载失败</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-message">加载失败</td></tr>';
             }
         }
         
@@ -2201,8 +2292,27 @@
             tbody.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
             clearSelection('logs');
             
+            const msgTypeValue = document.getElementById('log-msg-type').value;
+            const dateStart = document.getElementById('log-date-start').value;
+            const dateEnd = document.getElementById('log-date-end').value;
+            
             try {
-                const res = await apiFetch(`${API_BASE}/api/messages?limit=100`);
+                let url = `${API_BASE}/api/messages?limit=100`;
+                
+                // 判断是按大类筛选还是具体类型筛选
+                if (msgTypeValue) {
+                    // 检查是否为大类(非数字)
+                    if (isNaN(msgTypeValue)) {
+                        url += `&msgCategory=${msgTypeValue}`;
+                    } else {
+                        url += `&msgType=${msgTypeValue}`;
+                    }
+                }
+                
+                if (dateStart) url += `&dateStart=${dateStart}`;
+                if (dateEnd) url += `&dateEnd=${dateEnd}`;
+                
+                const res = await apiFetch(url);
                 const data = await res.json();
                 
                 if (data.success && data.data.length > 0) {
@@ -2237,6 +2347,31 @@
                 console.error('加载日志失败:', error);
                 tbody.innerHTML = '<tr><td colspan="5" class="empty-message">加载失败</td></tr>';
             }
+        }
+        
+        // ==================== 清空筛选条件 ====================
+        
+        function clearSmsFilter() {
+            document.getElementById('sms-search').value = '';
+            document.getElementById('sms-direction').value = '';
+            document.getElementById('sms-date-start').value = '';
+            document.getElementById('sms-date-end').value = '';
+            loadSms();
+        }
+        
+        function clearCallsFilter() {
+            document.getElementById('call-search').value = '';
+            document.getElementById('call-type').value = '';
+            document.getElementById('call-date-start').value = '';
+            document.getElementById('call-date-end').value = '';
+            loadCalls();
+        }
+        
+        function clearLogsFilter() {
+            document.getElementById('log-msg-type').value = '';
+            document.getElementById('log-date-start').value = '';
+            document.getElementById('log-date-end').value = '';
+            loadLogs();
         }
         
         // ==================== 批量操作功能 ====================
@@ -2331,7 +2466,7 @@
                 case 'calls':
                     data = currentCallsData;
                     filename = `通话记录_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '类型', '对方号码', '开始时间', '时长(秒)'];
+                    headers = ['设备ID', '卡槽', '手机号', '消息类型', '通话分类', '对方号码', '时间', '时长(秒)'];
                     break;
                 case 'logs':
                     data = currentLogsData;
@@ -2367,7 +2502,7 @@
                 case 'calls':
                     data = currentCallsData.filter(item => selectedIds.includes(item.id));
                     filename = `通话记录_选中_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '类型', '对方号码', '开始时间', '时长(秒)'];
+                    headers = ['设备ID', '卡槽', '手机号', '消息类型', '通话分类', '对方号码', '时间', '时长(秒)'];
                     break;
                 case 'logs':
                     data = currentLogsData.filter(item => selectedIds.includes(item.id));
@@ -2402,6 +2537,7 @@
                             item.dev_id,
                             item.slot || '',
                             item.msisdn || '',
+                            getCallMsgTypeText(item.msg_type || 603).replace(/[\ud83c-\ud83e][\udc00-\udfff]/g, ''),  // 移除emoji
                             item.call_type === 'incoming' ? '来电' : item.call_type === 'outgoing' ? '去电' : '未接',
                             item.phone_num,
                             formatBeijingTime(item.start_time),
@@ -2521,6 +2657,21 @@
                 'missed': '❌ 未接'
             };
             return types[type] || type;
+        }
+        
+        function getCallMsgTypeText(msgType) {
+            const types = {
+                601: '📳 来电振铃',
+                602: '✅ 来电接通',
+                603: '📴 对方挂断',
+                620: '📲 去电拨号',
+                621: '📳 对方振铃',
+                622: '✅ 去电接通',
+                623: '📴 去电挂断',
+                641: '🔢 本地按键',
+                642: '🔢 远程按键'
+            };
+            return types[msgType] || `类型${msgType}`;
         }
         
         function formatDuration(seconds) {
