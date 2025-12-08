@@ -1570,10 +1570,12 @@
                                             <option value="now">now - 设置时间</option>
                                             <option value="pingsec">pingsec - 设置Ping间隔</option>
                                             <option value="dailyrst">dailyrst - 设置每日重启时间</option>
+                                            <option value="chpwduser">chpwduser - 修改用户密码</option>
                                         </optgroup>
                                         <optgroup label="卡槽控制">
                                             <option value="slotoff">slotoff - 指定卡槽关机</option>
                                             <option value="slotrst">slotrst - 指定卡槽重启</option>
+                                            <option value="slotplmn">slotplmn - 设置运营商PLMN</option>
                                         </optgroup>
                                         <optgroup label="短信">
                                             <option value="sendsms">sendsms - 发送短信</option>
@@ -1583,11 +1585,19 @@
                                             <option value="teldial">teldial - 拨打电话</option>
                                             <option value="telanswer">telanswer - 接听来电</option>
                                             <option value="telhangup">telhangup - 挂断电话</option>
+                                            <option value="telstarttts">telstarttts - 播放TTS语音</option>
+                                            <option value="telstoptts">telstoptts - 停止TTS语音</option>
+                                            <option value="telkeypress">telkeypress - 发送DTMF按键</option>
                                             <option value="querytel">querytel - 查询通话记录</option>
                                         </optgroup>
                                         <optgroup label="WIFI">
+                                            <option value="wf">wf - WiFi开关</option>
                                             <option value="addwf">addwf - 添加WiFi热点</option>
                                             <option value="delwf">delwf - 删除WiFi热点</option>
+                                        </optgroup>
+                                        <optgroup label="OTA升级">
+                                            <option value="dailyota">dailyota - 设置每日升级时间</option>
+                                            <option value="otanow">otanow - 立即升级</option>
                                         </optgroup>
                                     </select>
                                 </div>
@@ -2739,6 +2749,12 @@
                     { name: 'p1', label: '重启时间(0-23)', placeholder: '4 (凌晨4点)', type: 'number', required: true }
                 ]
             },
+            'chpwduser': {
+                desc: '修改用户密码',
+                params: [
+                    { name: 'p1', label: '新密码', placeholder: '至少4位', type: 'text', required: true }
+                ]
+            },
             'slotoff': { 
                 desc: '指定卡槽关机',
                 params: [
@@ -2749,6 +2765,13 @@
                 desc: '指定卡槽重启',
                 params: [
                     { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
+                ]
+            },
+            'slotplmn': {
+                desc: '指定卡注册的运营商',
+                params: [
+                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                    { name: 'p2', label: '运营商代码', placeholder: '如: 46001 (0表示自动)', type: 'number', default: '0' }
                 ]
             },
             'sendsms': { 
@@ -2794,11 +2817,43 @@
                     { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
                 ]
             },
+            'telstarttts': {
+                desc: '播放TTS语音',
+                params: [
+                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                    { name: 'p2', label: 'TTS内容', placeholder: '要播放的语音内容', type: 'textarea', required: true },
+                    { name: 'p3', label: '播放次数', placeholder: '0表示无限循环', type: 'number', default: '1' },
+                    { name: 'p4', label: '播放间隔(秒)', placeholder: '默认1秒', type: 'number', default: '1' },
+                    { name: 'p5', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                ]
+            },
+            'telstoptts': {
+                desc: '停止播放TTS语音',
+                params: [
+                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                    { name: 'p2', label: '停止后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                ]
+            },
+            'telkeypress': {
+                desc: '发送DTMF按键',
+                params: [
+                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                    { name: 'p2', label: '按键序列', placeholder: '如: 123#', type: 'text', required: true },
+                    { name: 'p3', label: '按键时长(ms)', placeholder: '默认200ms', type: 'number', default: '200' },
+                    { name: 'p4', label: '按键间隔(ms)', placeholder: '默认100ms', type: 'number', default: '100' }
+                ]
+            },
             'querytel': { 
                 desc: '查询本地存储的通话记录',
                 params: [
                     { name: 'p1', label: '起始位置', placeholder: '从第几条开始 (默认1)', type: 'number', default: '1' },
                     { name: 'p2', label: '查询条数', placeholder: '查询多少条 (默认10)', type: 'number', default: '10' }
+                ]
+            },
+            'wf': {
+                desc: '打开或关闭WiFi',
+                params: [
+                    { name: 'p1', label: '动作', type: 'select', options: [{v:'on',t:'打开'},{v:'off',t:'关闭'}], required: true }
                 ]
             },
             'addwf': { 
@@ -2812,6 +2867,18 @@
                 desc: '删除已保存的WiFi热点信息',
                 params: [
                     { name: 'p1', label: 'WiFi名称', placeholder: '要删除的WiFi热点名', type: 'text', required: true }
+                ]
+            },
+            'dailyota': {
+                desc: '设置每日自动升级时间',
+                params: [
+                    { name: 'p1', label: '升级时间(0-23)', placeholder: '3 (凌晨3点)', type: 'number', required: true }
+                ]
+            },
+            'otanow': {
+                desc: '立即执行OTA升级',
+                params: [
+                    { name: 'tid', label: '事务ID', placeholder: '用于接收结果(可选)', type: 'text' }
                 ]
             }
         };

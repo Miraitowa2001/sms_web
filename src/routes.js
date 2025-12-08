@@ -26,6 +26,106 @@ function calculateToken(devId, adminName, adminPassword) {
 }
 
 /**
+ * 发送指令到设备
+ * @param {string} deviceIp - 设备IP
+ * @param {string} token - 认证token
+ * @param {string} cmd - 命令名称
+ * @param {object} params - 命令参数
+ */
+async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
+    if (!deviceIp || !cmd) {
+        throw new Error('缺少必要参数: deviceIp, cmd');
+    }
+    
+    if (!token) {
+        throw new Error('缺少必要参数: token');
+    }
+    
+    // 构建URL参数
+    const urlParams = new URLSearchParams();
+    urlParams.append('token', token);
+    urlParams.append('cmd', cmd);
+    
+    // 添加其他参数 (p1, p2, p3, tid等)
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== '') {
+            urlParams.append(key, value);
+        }
+    }
+    
+    const url = `http://${deviceIp}/ctrl?${urlParams.toString()}`;
+    console.log(`[Control] 发送控制指令: ${url}`);
+    
+    // 发送HTTP请求到设备
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        const contentType = response.headers.get('content-type');
+        let result;
+        
+        if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+        } else {
+            result = await response.text();
+            // 尝试解析为JSON
+            try {
+                result = JSON.parse(result);
+            } catch (e) {
+                result = { raw: result };
+            }
+        }
+        
+        // 如果启用了AES加密，尝试解密设备响应
+        let decryptedResult = result;
+        if (config.aes.enabled && result) {
+            try {
+                // 如果是对象，尝试解密
+                if (typeof result === 'object' && result !== null) {
+                    decryptedResult = decryptData(result, config.aes);
+                    console.log(`[Control] 设备响应已解密:`, decryptedResult);
+                } else if (typeof result === 'string') {
+                    // 如果是字符串，可能是加密的Base64
+                    try {
+                        const temp = decryptData({ p: result }, config.aes);
+                        decryptedResult = temp;
+                        console.log(`[Control] 设备响应已解密:`, decryptedResult);
+                    } catch (e) {
+                        console.log(`[Control] 设备响应(未加密):`, result);
+                        decryptedResult = result;
+                    }
+                }
+            } catch (decryptError) {
+                console.warn(`[Control] 解密设备响应失败:`, decryptError.message);
+                console.log(`[Control] 设备响应(原始):`, result);
+                decryptedResult = result;
+            }
+        } else {
+            console.log(`[Control] 设备响应:`, result);
+        }
+        
+        return {
+            success: true,
+            data: decryptedResult,
+            command: { cmd, params, url }
+        };
+        
+    } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+            throw new Error('设备请求超时，请检查设备IP是否正确，设备是否在线');
+        }
+        throw fetchError;
+    }
+}
+
+/**
  * POST /api/control/send
  * 向开发板发送控制指令
  * 
@@ -44,13 +144,6 @@ router.post('/control/send', async (req, res) => {
     try {
         const { deviceIp, token, cmd, params = {} } = req.body;
         
-        if (!deviceIp || !cmd) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '缺少必要参数: deviceIp, cmd' 
-            });
-        }
-        
         if (!token) {
             return res.status(400).json({ 
                 success: false, 
@@ -58,88 +151,8 @@ router.post('/control/send', async (req, res) => {
             });
         }
         
-        // 构建URL参数
-        const urlParams = new URLSearchParams();
-        urlParams.append('token', token);
-        urlParams.append('cmd', cmd);
-        
-        // 添加其他参数 (p1, p2, p3, tid等)
-        for (const [key, value] of Object.entries(params)) {
-            if (value !== undefined && value !== null && value !== '') {
-                urlParams.append(key, value);
-            }
-        }
-        
-        const url = `http://${deviceIp}/ctrl?${urlParams.toString()}`;
-        console.log(`[Control] 发送控制指令: ${url}`);
-        
-        // 发送HTTP请求到设备
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            
-            const contentType = response.headers.get('content-type');
-            let result;
-            
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                result = await response.text();
-                // 尝试解析为JSON
-                try {
-                    result = JSON.parse(result);
-                } catch (e) {
-                    result = { raw: result };
-                }
-            }
-            
-            // 如果启用了AES加密，尝试解密设备响应
-            let decryptedResult = result;
-            if (config.aes.enabled && result) {
-                try {
-                    // 如果是对象，尝试解密
-                    if (typeof result === 'object' && result !== null) {
-                        decryptedResult = decryptData(result, config.aes);
-                        console.log(`[Control] 设备响应已解密:`, decryptedResult);
-                    } else if (typeof result === 'string') {
-                        // 如果是字符串，可能是加密的Base64
-                        try {
-                            const temp = decryptData({ p: result }, config.aes);
-                            decryptedResult = temp;
-                            console.log(`[Control] 设备响应已解密:`, decryptedResult);
-                        } catch (e) {
-                            console.log(`[Control] 设备响应(未加密):`, result);
-                            decryptedResult = result;
-                        }
-                    }
-                } catch (decryptError) {
-                    console.warn(`[Control] 解密设备响应失败:`, decryptError.message);
-                    console.log(`[Control] 设备响应(原始):`, result);
-                    decryptedResult = result;
-                }
-            } else {
-                console.log(`[Control] 设备响应:`, result);
-            }
-            
-            res.json({
-                success: true,
-                data: decryptedResult,
-                command: { cmd, params, url }
-            });
-            
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            if (fetchError.name === 'AbortError') {
-                throw new Error('设备请求超时，请检查设备IP是否正确，设备是否在线');
-            }
-            throw fetchError;
-        }
+        const result = await sendCommandToDevice(deviceIp, token, cmd, params);
+        res.json(result);
         
     } catch (error) {
         console.error('[Control] 发送控制指令失败:', error);
@@ -147,6 +160,457 @@ router.post('/control/send', async (req, res) => {
             success: false, 
             error: error.message || '发送控制指令失败'
         });
+    }
+});
+
+// ==================== 9.1 设备控制类命令 ====================
+
+/**
+ * POST /api/control/chpwduser
+ * 修改用户密码
+ */
+router.post('/control/chpwduser', async (req, res) => {
+    try {
+        const { deviceIp, token, password } = req.body;
+        if (!password || password.length < 4) {
+            return res.status(400).json({ success: false, error: '密码长度不能少于4位' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'chpwduser', { p1: password });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/now
+ * 设置开发板时间
+ */
+router.post('/control/now', async (req, res) => {
+    try {
+        const { deviceIp, token, time, auto = 15, timezone = 8 } = req.body;
+        const params = { p2: auto, p3: timezone };
+        if (time) params.p1 = time;
+        const result = await sendCommandToDevice(deviceIp, token, 'now', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/stat
+ * 获取开发板状态
+ */
+router.post('/control/stat', async (req, res) => {
+    try {
+        const { deviceIp, token } = req.body;
+        const result = await sendCommandToDevice(deviceIp, token, 'stat');
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/restart
+ * 重启开发板
+ */
+router.post('/control/restart', async (req, res) => {
+    try {
+        const { deviceIp, token } = req.body;
+        const result = await sendCommandToDevice(deviceIp, token, 'restart');
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/pingsec
+ * 修改ping间隔秒数
+ */
+router.post('/control/pingsec', async (req, res) => {
+    try {
+        const { deviceIp, token, seconds } = req.body;
+        if (!seconds || seconds < 10) {
+            return res.status(400).json({ success: false, error: '间隔秒数不能小于10' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'pingsec', { p1: seconds });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/dailyrst
+ * 设置每日重启时间
+ */
+router.post('/control/dailyrst', async (req, res) => {
+    try {
+        const { deviceIp, token, hour } = req.body;
+        if (hour === undefined || hour < 0) {
+            return res.status(400).json({ success: false, error: '无效的小时数' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'dailyrst', { p1: hour });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 9.2 卡槽控制命令 ====================
+
+/**
+ * POST /api/control/slotoff
+ * 指定卡槽关机
+ */
+router.post('/control/slotoff', async (req, res) => {
+    try {
+        const { deviceIp, token, slot } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'slotoff', { p1: slot });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/slotrst
+ * 指定卡槽重启
+ */
+router.post('/control/slotrst', async (req, res) => {
+    try {
+        const { deviceIp, token, slot } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'slotrst', { p1: slot });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/slotplmn
+ * 指定卡注册的运营商
+ */
+router.post('/control/slotplmn', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, operatorCode } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'slotplmn', { p1: slot, p2: operatorCode || 0 });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 9.3 WiFi控制命令 ====================
+
+/**
+ * POST /api/control/wf
+ * 打开或关闭wifi
+ */
+router.post('/control/wf', async (req, res) => {
+    try {
+        const { deviceIp, token, action } = req.body;
+        if (!['on', 'off'].includes(action)) {
+            return res.status(400).json({ success: false, error: '无效的动作(on或off)' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'wf', { p1: action });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/addwf
+ * 增加wifi热点信息
+ */
+router.post('/control/addwf', async (req, res) => {
+    try {
+        const { deviceIp, token, ssid, password } = req.body;
+        if (!ssid || !password) {
+            return res.status(400).json({ success: false, error: 'SSID和密码不能为空' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'addwf', { p1: ssid, p2: password });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/delwf
+ * 删除wifi热点信息
+ */
+router.post('/control/delwf', async (req, res) => {
+    try {
+        const { deviceIp, token, ssid } = req.body;
+        if (!ssid) {
+            return res.status(400).json({ success: false, error: 'SSID不能为空' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'delwf', { p1: ssid });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 9.4 短信命令 ====================
+
+/**
+ * POST /api/control/sendsms
+ * 外发短信
+ */
+router.post('/control/sendsms', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, phone, content, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        if (!phone || !content) {
+            return res.status(400).json({ success: false, error: '电话号码和内容不能为空' });
+        }
+        if (!tid) {
+            return res.status(400).json({ success: false, error: 'tid不能为空' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'sendsms', { 
+            p1: slot, 
+            p2: phone, 
+            p3: content,
+            tid: tid
+        });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/querysms
+ * 查询本地短信库
+ */
+router.post('/control/querysms', async (req, res) => {
+    try {
+        const { deviceIp, token, offset = 1, limit = 10, keyword } = req.body;
+        const params = { p1: offset, p2: limit };
+        if (keyword) params.p3 = keyword;
+        const result = await sendCommandToDevice(deviceIp, token, 'querysms', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 9.5 通话命令 ====================
+
+/**
+ * POST /api/control/teldial
+ * 电话拨号
+ */
+router.post('/control/teldial', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, phone, duration = 175, tts, loops = 1, pause = 1, action = 1, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        if (!phone) {
+            return res.status(400).json({ success: false, error: '电话号码不能为空' });
+        }
+        const params = {
+            p1: slot,
+            p2: phone,
+            p3: duration,
+            p4: tts || '',
+            p5: loops,
+            p6: pause,
+            p7: action
+        };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'teldial', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/telanswer
+ * 接听来电
+ */
+router.post('/control/telanswer', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, duration = 175, tts, loops = 1, pause = 1, action = 1, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const params = {
+            p1: slot,
+            p2: duration,
+            p3: tts || '',
+            p4: loops,
+            p5: pause,
+            p6: action
+        };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'telanswer', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/telhangup
+ * 电话挂机
+ */
+router.post('/control/telhangup', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const params = { p1: slot };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'telhangup', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/telstarttts
+ * 播放TTS语音
+ */
+router.post('/control/telstarttts', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, tts, loops = 0, pause = 1, action = 0, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        if (!tts) {
+            return res.status(400).json({ success: false, error: 'TTS内容不能为空' });
+        }
+        const params = {
+            p1: slot,
+            p2: tts,
+            p3: loops,
+            p4: pause,
+            p5: action
+        };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'telstarttts', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/telstoptts
+ * 停止播放TTS语音
+ */
+router.post('/control/telstoptts', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, action = 0, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        const params = { p1: slot, p2: action };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'telstoptts', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/telkeypress
+ * 本地电话按键
+ */
+router.post('/control/telkeypress', async (req, res) => {
+    try {
+        const { deviceIp, token, slot, keys, duration = 200, interval = 100, tid } = req.body;
+        if (![1, 2].includes(parseInt(slot))) {
+            return res.status(400).json({ success: false, error: '无效的卡槽号(1或2)' });
+        }
+        if (!keys) {
+            return res.status(400).json({ success: false, error: '按键序列不能为空' });
+        }
+        const params = {
+            p1: slot,
+            p2: keys,
+            p3: duration,
+            p4: interval
+        };
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'telkeypress', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/querytel
+ * 查询本地通话记录
+ */
+router.post('/control/querytel', async (req, res) => {
+    try {
+        const { deviceIp, token, offset = 1, limit = 10, type = 0, keyword } = req.body;
+        const params = { p1: offset, p2: limit, p3: type };
+        if (keyword) params.p4 = keyword;
+        const result = await sendCommandToDevice(deviceIp, token, 'querytel', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 9.6 OTA升级命令 ====================
+
+/**
+ * POST /api/control/dailyota
+ * 设置每日OTA升级时间
+ */
+router.post('/control/dailyota', async (req, res) => {
+    try {
+        const { deviceIp, token, hour } = req.body;
+        if (hour === undefined || hour < 0) {
+            return res.status(400).json({ success: false, error: '无效的小时数' });
+        }
+        const result = await sendCommandToDevice(deviceIp, token, 'dailyota', { p1: hour });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/otanow
+ * 立即执行OTA升级
+ */
+router.post('/control/otanow', async (req, res) => {
+    try {
+        const { deviceIp, token, tid } = req.body;
+        const params = {};
+        if (tid) params.tid = tid;
+        const result = await sendCommandToDevice(deviceIp, token, 'otanow', params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
