@@ -8,6 +8,8 @@ const router = express.Router();
 const { dbWrapper: db } = require('./database');
 const { MESSAGE_TYPES } = require('./constants');
 const crypto = require('crypto');
+const { decryptData } = require('./aesDecrypt');
+const config = require('./config');
 
 // ==================== 设备控制指令 API ====================
 
@@ -97,12 +99,37 @@ router.post('/control/send', async (req, res) => {
                 }
             }
             
-            // 记录到日志
-            console.log(`[Control] 设备响应:`, result);
+            // 如果启用了AES加密，尝试解密设备响应
+            let decryptedResult = result;
+            if (config.aes.enabled && result) {
+                try {
+                    // 如果是对象，尝试解密
+                    if (typeof result === 'object' && result !== null) {
+                        decryptedResult = decryptData(result, config.aes);
+                        console.log(`[Control] 设备响应已解密:`, decryptedResult);
+                    } else if (typeof result === 'string') {
+                        // 如果是字符串，可能是加密的Base64
+                        try {
+                            const temp = decryptData({ p: result }, config.aes);
+                            decryptedResult = temp;
+                            console.log(`[Control] 设备响应已解密:`, decryptedResult);
+                        } catch (e) {
+                            console.log(`[Control] 设备响应(未加密):`, result);
+                            decryptedResult = result;
+                        }
+                    }
+                } catch (decryptError) {
+                    console.warn(`[Control] 解密设备响应失败:`, decryptError.message);
+                    console.log(`[Control] 设备响应(原始):`, result);
+                    decryptedResult = result;
+                }
+            } else {
+                console.log(`[Control] 设备响应:`, result);
+            }
             
             res.json({
                 success: true,
-                data: result,
+                data: decryptedResult,
                 command: { cmd, params, url }
             });
             
