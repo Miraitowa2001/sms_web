@@ -1006,6 +1006,15 @@ router.get('/sms', (req, res) => {
             countSql += ' AND dev_id = ?';
             params.push(devId);
         }
+        if (req.query.ids) {
+            const ids = req.query.ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+            if (ids.length > 0) {
+                const placeholders = ids.map(() => '?').join(',');
+                sql += ` AND id IN (${placeholders})`;
+                countSql += ` AND id IN (${placeholders})`;
+                params.push(...ids);
+            }
+        }
         if (phoneNum) {
             sql += ' AND phone_num LIKE ?';
             countSql += ' AND phone_num LIKE ?';
@@ -1192,6 +1201,15 @@ router.get('/calls', (req, res) => {
             countSql += ' AND dev_id = ?';
             params.push(devId);
         }
+        if (req.query.ids) {
+            const ids = req.query.ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+            if (ids.length > 0) {
+                const placeholders = ids.map(() => '?').join(',');
+                sql += ` AND id IN (${placeholders})`;
+                countSql += ` AND id IN (${placeholders})`;
+                params.push(...ids);
+            }
+        }
         if (phoneNum) {
             sql += ' AND phone_num LIKE ?';
             countSql += ' AND phone_num LIKE ?';
@@ -1306,6 +1324,15 @@ router.get('/messages', (req, res) => {
             sql += ' AND dev_id = ?';
             countSql += ' AND dev_id = ?';
             params.push(devId);
+        }
+        if (req.query.ids) {
+            const ids = req.query.ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+            if (ids.length > 0) {
+                const placeholders = ids.map(() => '?').join(',');
+                sql += ` AND id IN (${placeholders})`;
+                countSql += ` AND id IN (${placeholders})`;
+                params.push(...ids);
+            }
         }
         
         // 支持按消息大类筛选

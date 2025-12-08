@@ -494,18 +494,18 @@
                 <div class="card-body">
                     <div class="search-box">
                         <input type="text" class="form-control" id="sms-search" placeholder="搜索号码..." style="flex:1;">
-                        <select class="form-control" id="sms-slot" style="width: 100px;">
+                        <select class="form-control" id="sms-slot" style="width: 100px;" onchange="App.Modules.SMS.load()">
                             <option value="">全部卡槽</option>
                             <option value="1">卡槽1</option>
                             <option value="2">卡槽2</option>
                         </select>
-                        <select class="form-control" id="sms-direction" style="width: 120px;">
+                        <select class="form-control" id="sms-direction" style="width: 120px;" onchange="App.Modules.SMS.load()">
                             <option value="">全部方向</option>
                             <option value="in">接收</option>
                             <option value="out">发送</option>
                         </select>
-                        <input type="date" class="form-control" id="sms-date-start" style="width: 140px;">
-                        <input type="date" class="form-control" id="sms-date-end" style="width: 140px;">
+                        <input type="date" class="form-control" id="sms-date-start" style="width: 140px;" onchange="App.Modules.SMS.load()">
+                        <input type="date" class="form-control" id="sms-date-end" style="width: 140px;" onchange="App.Modules.SMS.load()">
                         <button class="btn btn-primary" onclick="App.Modules.SMS.load()">搜索</button>
                     </div>
                     <div class="table-container">
@@ -548,19 +548,19 @@
                 <div class="card-body">
                     <div class="search-box">
                         <input type="text" class="form-control" id="call-search" placeholder="搜索号码..." style="flex:1;">
-                        <select class="form-control" id="call-slot" style="width: 100px;">
+                        <select class="form-control" id="call-slot" style="width: 100px;" onchange="App.Modules.Calls.load()">
                             <option value="">全部卡槽</option>
                             <option value="1">卡槽1</option>
                             <option value="2">卡槽2</option>
                         </select>
-                        <select class="form-control" id="call-type" style="width: 120px;">
+                        <select class="form-control" id="call-type" style="width: 120px;" onchange="App.Modules.Calls.load()">
                             <option value="">全部类型</option>
                             <option value="incoming">来电</option>
                             <option value="outgoing">去电</option>
                             <option value="missed">未接</option>
                         </select>
-                        <input type="date" class="form-control" id="call-date-start" style="width: 140px;">
-                        <input type="date" class="form-control" id="call-date-end" style="width: 140px;">
+                        <input type="date" class="form-control" id="call-date-start" style="width: 140px;" onchange="App.Modules.Calls.load()">
+                        <input type="date" class="form-control" id="call-date-end" style="width: 140px;" onchange="App.Modules.Calls.load()">
                         <button class="btn btn-primary" onclick="App.Modules.Calls.load()">搜索</button>
                     </div>
                     <div class="table-container">
@@ -603,7 +603,7 @@
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <select class="form-control" id="log-msg-type" style="flex:1;">
+                        <select class="form-control" id="log-msg-type" style="flex:1;" onchange="App.Modules.Logs.load()">
                             <option value="">全部消息类型</option>
                             <optgroup label="消息大类">
                                 <option value="network">联网消息 (100-102)</option>
@@ -615,8 +615,8 @@
                                 <option value="module">通讯模组 (301)</option>
                             </optgroup>
                         </select>
-                        <input type="date" class="form-control" id="log-date-start" style="width: 140px;">
-                        <input type="date" class="form-control" id="log-date-end" style="width: 140px;">
+                        <input type="date" class="form-control" id="log-date-start" style="width: 140px;" onchange="App.Modules.Logs.load()">
+                        <input type="date" class="form-control" id="log-date-end" style="width: 140px;" onchange="App.Modules.Logs.load()">
                         <button class="btn btn-primary" onclick="App.Modules.Logs.load()">搜索</button>
                     </div>
                     <div class="table-container">
@@ -1150,11 +1150,18 @@
                         const dateEnd = document.getElementById('sms-date-end').value;
                         
                         let url = '/api/sms?export=csv';
-                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
-                        if (direction) url += `&direction=${direction}`;
-                        if (slot) url += `&slot=${slot}`;
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        
+                        // 优先使用勾选的ID
+                        const ids = App.UI.getSelectedIds('#table-sms');
+                        if (ids.length > 0) {
+                            url += `&ids=${ids.join(',')}`;
+                        } else {
+                            if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                            if (direction) url += `&direction=${direction}`;
+                            if (slot) url += `&slot=${slot}`;
+                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        }
                         
                         const token = localStorage.getItem(App.config.authKey);
                         if (token) url += `&_auth=${encodeURIComponent(token)}`;
@@ -1231,11 +1238,18 @@
                         const dateEnd = document.getElementById('call-date-end').value;
                         
                         let url = '/api/calls?export=csv';
-                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
-                        if (callType) url += `&callType=${callType}`;
-                        if (slot) url += `&slot=${slot}`;
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        
+                        // 优先使用勾选的ID
+                        const ids = App.UI.getSelectedIds('#table-calls');
+                        if (ids.length > 0) {
+                            url += `&ids=${ids.join(',')}`;
+                        } else {
+                            if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                            if (callType) url += `&callType=${callType}`;
+                            if (slot) url += `&slot=${slot}`;
+                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        }
                         
                         const token = localStorage.getItem(App.config.authKey);
                         if (token) url += `&_auth=${encodeURIComponent(token)}`;
@@ -1317,12 +1331,19 @@
                         const dateEnd = document.getElementById('log-date-end').value;
                         
                         let url = '/api/messages?export=csv';
-                        if (msgType) {
-                            if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
-                            else url += `&msgType=${msgType}`;
+                        
+                        // 优先使用勾选的ID
+                        const ids = App.UI.getSelectedIds('#table-logs');
+                        if (ids.length > 0) {
+                            url += `&ids=${ids.join(',')}`;
+                        } else {
+                            if (msgType) {
+                                if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
+                                else url += `&msgType=${msgType}`;
+                            }
+                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
                         }
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
                         
                         const token = localStorage.getItem(App.config.authKey);
                         if (token) url += `&_auth=${encodeURIComponent(token)}`;
