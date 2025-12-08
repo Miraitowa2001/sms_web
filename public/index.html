@@ -4,1389 +4,543 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#4f46e5">
     <title>IoT设备管理系统</title>
+    <!-- 引入 Lucide 图标库 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ==================== 1. CSS 变量与重置 ==================== */
+        :root {
+            /* 品牌色 */
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-light: #e0e7ff;
+            --secondary: #64748b;
+            
+            /* 状态色 */
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --info: #3b82f6;
+            --info-bg: #dbeafe;
+
+            /* 背景与文字 */
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --border-color: #e2e8f0;
+
+            /* 界面参数 */
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --header-height: 64px;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f5f7fa;
-            color: #333;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+            font-size: 14px;
+            padding-bottom: 40px;
         }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ==================== 2. 通用组件类 (Modular UI) ==================== */
         
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .header h1 {
-            font-size: 24px;
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
             font-weight: 500;
-        }
-        
-        .header p {
-            margin-top: 5px;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        .stat-card h3 {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 8px;
-        }
-        
-        .stat-card .value {
-            font-size: 32px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .stat-card .sub-stats {
-            margin-top: 10px;
-            font-size: 13px;
-            color: #888;
-        }
-        
-        .stat-card .online {
-            color: #10b981;
-        }
-        
-        .stat-card .offline {
-            color: #ef4444;
-        }
-        
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 10px;
-        }
-        
-        .tab {
-            padding: 10px 20px;
-            background: none;
-            border: none;
             cursor: pointer;
-            font-size: 15px;
-            color: #666;
-            border-radius: 8px;
             transition: all 0.2s;
+            border: 1px solid transparent;
+            font-size: 14px;
+            white-space: nowrap;
         }
-        
-        .tab:hover {
-            background: #f3f4f6;
-        }
-        
-        .tab.active {
-            background: #667eea;
-            color: white;
-        }
-        
-        .panel {
-            display: none;
-        }
-        
-        .panel.active {
-            display: block;
-        }
-        
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; height: 28px; }
+        .btn-icon { padding: 6px; border-radius: 6px; }
+
+        /* 卡片 */
         .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255,255,255,0.5);
+            margin-bottom: 20px;
             overflow: hidden;
         }
-        
         .card-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: rgba(248, 250, 252, 0.5);
         }
-        
-        .card-header h2 {
-            font-size: 16px;
-            font-weight: 500;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        th {
-            background: #f9fafb;
-            font-weight: 500;
-            font-size: 13px;
-            color: #666;
-        }
-        
-        td {
-            font-size: 14px;
-        }
-        
-        tr:hover {
-            background: #f9fafb;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
+        .card-header h2 { font-size: 16px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 20px; }
+
+        /* 状态徽章 (Modular State Classes) */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
             font-size: 12px;
             font-weight: 500;
+            line-height: 1.4;
         }
-        
-        .status-online {
-            background: #d1fae5;
-            color: #059669;
-        }
-        
-        .status-offline {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
+        .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+        .badge-success { background: var(--success-bg); color: #065f46; }
+        .badge-success::before { background: var(--success); }
+        .badge-warning { background: var(--warning-bg); color: #92400e; }
+        .badge-warning::before { background: var(--warning); }
+        .badge-danger { background: var(--danger-bg); color: #991b1b; }
+        .badge-danger::before { background: var(--danger); }
+        .badge-info { background: var(--info-bg); color: #1e40af; }
+        .badge-info::before { background: var(--info); }
+        .badge-neutral { background: #f1f5f9; color: #475569; }
+        .badge-neutral::before { background: #94a3b8; }
+
+        /* 表单元素 */
+        .form-control {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
             transition: all 0.2s;
+            background: #fff;
         }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        .search-box { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+
+        /* ==================== 3. 布局与结构 ==================== */
         
-        .btn-primary {
-            background: #667eea;
+        /* 顶部导航 */
+        .app-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5a67d8;
-        }
-        
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-        
-        .refresh-btn {
-            background: #f3f4f6;
-            color: #333;
-        }
-        
-        .refresh-btn:hover {
-            background: #e5e7eb;
-        }
-        
-        .sms-content {
-            max-width: 400px;
-            white-space: normal;
-            word-break: break-all;
-        }
-        
-        /* 允许表格列宽调整 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: auto;
-        }
-
-        .device-id {
-            font-family: monospace;
-            background: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #888;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .search-box {
+            padding: 0 20px;
+            height: var(--header-height);
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow-md);
         }
-        
-        .search-box input, .search-box select, .search-box button {
-            padding: 8px 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .search-box input[type="text"] {
-            flex: 1;
-            min-width: 150px;
-        }
-        
-        .search-box input[type="date"] {
-            min-width: 140px;
-        }
-        
-        .search-box select {
-            min-width: 120px;
-        }
-        
-        /* 消息日志的消息类型选择器需要更宽 */
-        #log-msg-type {
-            min-width: 200px;
+        .app-logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .user-menu { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+        .user-avatar { 
+            width: 32px; height: 32px; background: rgba(255,255,255,0.2); 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
         }
 
-        .sim-info {
-            font-size: 12px;
-            color: #666;
-        }
+        .container { max-width: 1280px; margin: 20px auto; padding: 0 20px; }
 
-        .sim-info .sim-slot {
-            display: inline-block;
-            padding: 2px 6px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            margin-right: 5px;
-        }
-
-        .sim-info .sim-slot.ready {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .sim-info .sim-slot.error {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-        
-        /* 控制指令面板样式 */
-        .control-form {
-            max-width: 900px;
-        }
-        
-        .form-section {
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .form-section:last-child {
-            border-bottom: none;
-        }
-        
-        .form-section h3 {
-            font-size: 15px;
-            color: #333;
-            margin-bottom: 15px;
-            font-weight: 500;
-        }
-        
-        .form-grid {
+        /* 统计卡片网格 */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
         }
-        
-        .form-group {
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
             display: flex;
             flex-direction: column;
+            position: relative;
+            overflow: hidden;
         }
-        
-        .form-group label {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 5px;
+        .stat-card-icon {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            color: var(--primary-light);
+            opacity: 0.5;
+            width: 48px; height: 48px;
         }
+        .stat-label { color: var(--text-secondary); font-size: 13px; margin-bottom: 4px; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+        .stat-detail { font-size: 12px; display: flex; gap: 8px; }
         
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            padding: 10px 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .form-group small {
-            font-size: 11px;
-            color: #888;
-            margin-top: 4px;
-        }
-        
-        .form-group textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .cmd-params {
-            margin-top: 15px;
-        }
-        
-        .cmd-params .param-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .form-actions {
-            margin-top: 20px;
+        /* 导航标签 */
+        .nav-tabs {
             display: flex;
-            gap: 10px;
-        }
-        
-        .result-box {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .result-box.success {
-            background: #064e3b;
-            color: #a7f3d0;
-        }
-        
-        .result-box.error {
-            background: #7f1d1d;
-            color: #fecaca;
-        }
-        
-        /* 弹窗样式 */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            width: 100%;
-            max-width: 450px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .modal-header h3 {
-            font-size: 18px;
-            font-weight: 500;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-            line-height: 1;
-        }
-        
-        .modal-close:hover {
-            color: #333;
-        }
-        
-        .modal-body .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .modal-body .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-            color: #333;
-        }
-        
-        .modal-body .form-group input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .modal-body .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
-
-        /* 登录遮罩 */
-        .login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s;
-            padding: 20px;
-            overflow-y: auto;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 4px;
             -webkit-overflow-scrolling: touch;
         }
-        
-        .login-card {
+        .nav-item {
+            padding: 10px 18px;
             background: white;
-            padding: 35px 30px;
-            border-radius: 20px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
-            width: 100%;
-            max-width: 380px;
-            text-align: center;
-            animation: slideUp 0.4s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .login-card .login-icon {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            font-size: 32px;
-        }
-        
-        .login-card h2 {
-            margin-bottom: 8px;
-            color: #333;
-            font-size: 22px;
-            font-weight: 600;
-        }
-        
-        .login-card p {
-            color: #888;
-            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
             font-size: 14px;
-        }
-        
-        .login-form-group {
-            text-align: left;
-            margin-bottom: 18px;
-        }
-        
-        .login-form-group label {
-            display: block;
-            margin-bottom: 6px;
-            color: #555;
-            font-size: 13px;
             font-weight: 500;
-        }
-        
-        .login-form-group .input-wrapper {
-            position: relative;
-        }
-        
-        .login-form-group .input-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
-            font-size: 16px;
-            pointer-events: none;
-        }
-        
-        .login-form-group input {
-            width: 100%;
-            padding: 14px 14px 14px 42px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 15px;
+            cursor: pointer;
             transition: all 0.2s;
-            background: #fafafa;
-        }
-        
-        .login-form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-        
-        .login-form-group input::placeholder {
-            color: #bbb;
-        }
-        
-        .login-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-size: 13px;
-        }
-        
-        .login-options label {
             display: flex;
             align-items: center;
             gap: 6px;
-            color: #666;
-            cursor: pointer;
-            user-select: none;
+            white-space: nowrap;
         }
-        
-        .login-options input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #667eea;
-            cursor: pointer;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 500;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
+        .nav-item:hover { background: #f8fafc; color: var(--primary); }
+        .nav-item.active {
+            background: var(--primary);
             color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .login-btn:active {
-            transform: translateY(0);
-        }
-        
-        .login-btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .login-btn .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            display: none;
-        }
-        
-        .login-btn.loading .spinner {
-            display: block;
-        }
-        
-        .login-btn.loading .btn-text {
-            display: none;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .login-error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 18px;
-            font-size: 13px;
-            display: none;
-            text-align: left;
-        }
-        
-        .login-error.show {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            animation: shake 0.4s ease-in-out;
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-5px); }
-            40%, 80% { transform: translateX(5px); }
-        }
-        
-        .login-footer {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #f0f0f0;
-            color: #999;
-            font-size: 12px;
+            border-color: var(--primary);
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
         }
 
-        /* 批量操作工具栏 */
-        .batch-toolbar {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 12px 15px;
-            background: #f8fafc;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+        /* 页面切换逻辑 */
+        .page-panel { display: none; animation: fadeIn 0.3s ease; }
+        .page-panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 表格样式 */
+        .table-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; table-layout: auto; }
+        th { 
+            background: #f8fafc; color: var(--text-secondary); 
+            font-weight: 600; text-align: left; padding: 12px 16px; 
+            font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
         }
-        
-        .batch-toolbar.hidden {
-            display: none;
+        td { padding: 14px 16px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8fafc; }
+
+        /* 登录遮罩 */
+        .login-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex; justify-content: center; align-items: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
-        
-        .batch-toolbar .select-info {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .batch-toolbar .select-info strong {
-            color: #667eea;
-        }
-        
-        .batch-toolbar .batch-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-        
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #059669;
-        }
-        
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .btn-warning:hover {
-            background: #d97706;
-        }
-        
-        /* 表格复选框 */
-        .row-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #667eea;
-        }
-        
-        th .row-checkbox {
-            margin-right: 5px;
-        }
-        
-        tr.selected {
-            background: #eef2ff !important;
-        }
-        
-        /* 确认弹窗 */
-        .confirm-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .confirm-modal.active {
-            display: flex;
-        }
-        
-        .confirm-content {
+        .login-overlay.active { opacity: 1; pointer-events: auto; }
+        .login-card {
             background: white;
-            border-radius: 12px;
-            padding: 25px;
-            width: 90%;
-            max-width: 400px;
+            width: 100%; max-width: 380px;
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             text-align: center;
         }
-        
-        .confirm-content .confirm-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+        .login-icon-wrap {
+            width: 64px; height: 64px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
         }
-        
-        .confirm-content h3 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .confirm-content p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        
-        .confirm-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .confirm-actions .btn {
-            min-width: 100px;
-        }
+        .login-card h2 { margin-bottom: 8px; font-size: 20px; }
+        .login-card p { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
 
-        /* 移动端适配 */
+        /* Toast 提示 */
+        .toast-container {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 2000; display: flex; flex-direction: column; gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: white; padding: 12px 20px; border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            display: flex; align-items: center; gap: 10px;
+            animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto; min-width: 300px;
+        }
+        .toast-icon { flex-shrink: 0; }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        .toast.error .toast-icon { color: var(--danger); }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* ==================== 4. 移动端适配 (Mobile Optimization) ==================== */
         @media (max-width: 768px) {
-            .header {
-                padding: 15px;
-                text-align: center;
-            }
+            .app-header { padding: 0 16px; height: 56px; }
+            .header-title-text { display: none; } /* 仅显示 Logo 图标 */
+            .container { margin: 16px auto; padding: 0 16px; }
             
-            .header h1 {
-                font-size: 20px;
-            }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card:first-child { grid-column: 1 / -1; } /* 第一个卡片占满一行 */
+            .stat-value { font-size: 24px; }
             
-            .container {
-                padding: 10px;
-            }
+            .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .card-header > div { width: 100%; display: flex; gap: 8px; }
+            .card-header .btn { flex: 1; }
             
-            .tabs {
-                overflow-x: auto;
-                white-space: nowrap;
-                padding-bottom: 5px;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            .tab {
-                padding: 8px 15px;
-                font-size: 14px;
-                flex-shrink: 0;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            
-            .card-header {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-            
-            .card-header > div {
-                width: 100%;
-                display: flex;
-                gap: 10px;
-            }
-            
-            .card-header .btn {
-                flex: 1;
-            }
-            
-            .search-box {
-                flex-direction: column;
-            }
-            
-            .search-box input, .search-box select, .search-box button {
-                width: 100%;
-            }
-            
-            .table-responsive {
-                overflow-x: visible; /* 允许卡片溢出容器（虽然卡片本身是块级） */
-            }
-            
-            table {
-                min-width: 0;
-                display: block;
-            }
-            
-            thead {
-                display: none; /* 隐藏表头 */
-            }
-            
-            tbody {
-                display: block;
-            }
-            
-            tr {
-                display: block;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                margin-bottom: 15px;
-                padding: 15px;
-                border: 1px solid #e5e7eb;
-                position: relative;
-            }
-            
-            td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 8px 0;
-                border-bottom: 1px solid #f3f4f6;
-                text-align: right;
-                font-size: 14px;
-            }
-            
-            td:last-child {
-                border-bottom: none;
-            }
-            
-            td::before {
-                font-weight: 600;
-                color: #666;
-                margin-right: 15px;
-                text-align: left;
-                flex-shrink: 0;
-            }
-            
-            /* 复选框列特殊处理 */
-            #sms-table td:first-child,
-            #calls-table td:first-child,
-            #logs-table td:first-child {
-                justify-content: flex-start;
-                border-bottom: 1px solid #f3f4f6;
-                padding-bottom: 10px;
-                margin-bottom: 5px;
-            }
-            
-            #sms-table td:first-child::before,
-            #calls-table td:first-child::before,
-            #logs-table td:first-child::before {
-                content: "选择";
-            }
+            .search-box { flex-direction: column; }
+            .search-box > * { width: 100% !important; }
 
-            /* 空数据/加载中行特殊处理 */
-            td.loading, td.empty-message {
-                border: none;
-                justify-content: center;
-                width: 100%;
-                padding: 20px 0;
+            /* 移动端表格卡片化 */
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { 
+                background: white; 
+                border: 1px solid var(--border-color); 
+                border-radius: 12px; 
+                margin-bottom: 16px; 
+                box-shadow: var(--shadow-sm); 
+                padding: 12px;
             }
+            td { 
+                border: none; position: relative; padding: 8px 0 8px 40%; 
+                text-align: right; min-height: 36px; display: flex; align-items: center; justify-content: flex-end;
+            }
+            td::before { 
+                position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+                width: 35%; white-space: nowrap; font-weight: 600; color: var(--text-secondary); text-align: left;
+                content: attr(data-label); 
+            }
+            /* 特殊处理复选框列 */
+            td:has(input[type="checkbox"]) { padding-left: 0; justify-content: flex-start; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px; }
+            td:has(input[type="checkbox"])::before { content: none; }
             
-            td.loading::before, td.empty-message::before {
-                content: none !important;
-            }
-
-            /* 短信表格适配 */
-            #sms-table td:nth-of-type(2)::before { content: "设备/SIM"; }
-            #sms-table td:nth-of-type(3)::before { content: "方向"; }
-            #sms-table td:nth-of-type(4)::before { content: "对方号码"; }
-            #sms-table td:nth-of-type(5)::before { content: "内容"; }
-            #sms-table td:nth-of-type(6)::before { content: "时间"; }
+            /* 内容溢出处理 */
+            .device-id { word-break: break-all; font-family: monospace; }
             
             /* 短信内容特殊处理 */
-            #sms-table td:nth-of-type(5) {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            #sms-table td:nth-of-type(5) .sms-content {
+            .sms-content {
                 white-space: normal;
                 max-width: 100%;
-                margin-top: 5px;
                 text-align: left;
             }
-
-            /* 通话表格适配 */
-            #calls-table td:nth-of-type(2)::before { content: "设备/SIM"; }
-            #calls-table td:nth-of-type(3)::before { content: "消息类型"; }
-            #calls-table td:nth-of-type(4)::before { content: "通话分类"; }
-            #calls-table td:nth-of-type(5)::before { content: "对方号码"; }
-            #calls-table td:nth-of-type(6)::before { content: "时间"; }
-            #calls-table td:nth-of-type(7)::before { content: "时长"; }
-
-            /* 日志表格适配 */
-            #logs-table td:nth-of-type(2)::before { content: "设备/SIM"; }
-            #logs-table td:nth-of-type(3)::before { content: "消息类型"; }
-            #logs-table td:nth-of-type(4)::before { content: "类型名称"; }
-            #logs-table td:nth-of-type(5)::before { content: "时间"; }
-            
-            /* 设备表格适配 */
-            #devices-table td:nth-of-type(1)::before { content: "设备ID"; }
-            #devices-table td:nth-of-type(2)::before { content: "名称"; }
-            #devices-table td:nth-of-type(3)::before { content: "状态"; }
-            #devices-table td:nth-of-type(4)::before { content: "IP地址"; }
-            #devices-table td:nth-of-type(5)::before { content: "WiFi"; }
-            #devices-table td:nth-of-type(6)::before { content: "SIM卡"; }
-            #devices-table td:nth-of-type(7)::before { content: "最后在线"; }
-            
-            .form-grid {
-                grid-template-columns: 1fr;
+            td:has(.sms-content) {
+                display: block;
+                padding-left: 0;
+                text-align: left;
             }
-            
-            /* 移动端登录页面优化 */
-            .login-overlay {
-                align-items: flex-start;
-                padding-top: 60px;
-            }
-            
-            .login-card {
-                padding: 30px 24px;
-                border-radius: 16px;
-                max-width: 100%;
-            }
-            
-            .login-card .login-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 28px;
-            }
-            
-            .login-card h2 {
-                font-size: 20px;
-            }
-            
-            .login-form-group input {
-                padding: 12px 12px 12px 40px;
-                font-size: 16px; /* 防止iOS缩放 */
-            }
-            
-            .login-btn {
-                padding: 13px;
-            }
-            
-            /* 移动端弹窗优化 */
-            .modal-content {
-                margin: 15px;
-                max-width: calc(100% - 30px);
-                max-height: calc(100vh - 100px);
-                overflow-y: auto;
-            }
-            
-            .header-top {
-                flex-direction: column;
-                gap: 10px;
-                align-items: center;
-            }
-            
-            .logout-btn {
-                width: 100%;
-                text-align: center;
-                margin-left: 0;
+            td:has(.sms-content)::before {
+                position: static;
+                display: block;
+                margin-bottom: 4px;
+                transform: none;
             }
         }
         
-        /* 小屏手机适配 */
-        @media (max-width: 380px) {
-            .login-card {
-                padding: 25px 20px;
+        /* PC端短信内容优化 */
+        @media (min-width: 769px) {
+            .sms-content {
+                max-width: 400px;
+                white-space: normal;
+                word-break: break-all;
             }
-            
-            .login-card h2 {
-                font-size: 18px;
-            }
-            
-            .login-form-group input {
-                padding: 11px 11px 11px 38px;
-            }
-            
-            .stats-grid {
-                gap: 8px;
-            }
-            
-            .stat-card {
-                padding: 15px;
-            }
-            
-            .stat-card .value {
-                font-size: 26px;
-            }
-        }
-        
-        /* 横屏模式优化 */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .login-overlay {
-                padding: 15px;
-                align-items: center;
-            }
-            
-            .login-card {
-                padding: 20px;
-            }
-            
-            .login-card .login-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 24px;
-                margin-bottom: 15px;
-            }
-            
-            .login-card h2 {
-                font-size: 18px;
-                margin-bottom: 5px;
-            }
-            
-            .login-card p {
-                margin-bottom: 15px;
-            }
-            
-            .login-form-group {
-                margin-bottom: 12px;
-            }
-            
-            .login-footer {
-                margin-top: 15px;
-                padding-top: 15px;
-            }
-        }
-        
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-        }
-        
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            margin-left: 10px;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .logout-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-1px);
-        }
-        
-        .logout-btn:active {
-            transform: translateY(0);
-        }
-        
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: rgba(255,255,255,0.9);
-            font-size: 13px;
-        }
-        
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-top">
-            <div>
-                <h1>🔧 IoT设备管理系统</h1>
-                <p>设备管理 · 短信记录 · 通话记录</p>
-            </div>
-            <div class="user-info" id="user-info" style="display: none;">
-                <div class="user-avatar">👤</div>
-                <span id="current-user">管理员</span>
-                <button class="logout-btn" onclick="doLogout()" id="logout-btn">
-                    <span>🚪</span>
-                    <span>退出</span>
-                </button>
-            </div>
+    <!-- 顶部导航 -->
+    <header class="app-header">
+        <div class="app-logo">
+            <i data-lucide="cpu"></i>
+            <span class="header-title-text">IoT 管理控制台</span>
         </div>
-    </div>
-    
+        <div class="user-menu" id="user-menu" style="display: none;">
+            <div class="user-avatar"><i data-lucide="user" size="16"></i></div>
+            <span id="current-username">管理员</span>
+            <button class="btn btn-sm btn-icon" onclick="App.Auth.logout()" title="退出登录" style="background: rgba(255,255,255,0.2); border: none; color: white;">
+                <i data-lucide="log-out" size="16"></i>
+            </button>
+        </div>
+    </header>
+
     <div class="container">
-        <!-- 统计卡片 -->
+        <!-- 统计面板 -->
         <div class="stats-grid">
             <div class="stat-card">
-                <h3>设备总数</h3>
-                <div class="value" id="stat-devices">-</div>
-                <div class="sub-stats">
-                    <span class="online" id="stat-online">0 在线</span> / 
-                    <span class="offline" id="stat-offline">0 离线</span>
+                <i data-lucide="server" class="stat-card-icon"></i>
+                <div class="stat-label">设备总数</div>
+                <div class="stat-value" id="stat-devices">-</div>
+                <div class="stat-detail">
+                    <span class="badge badge-success" id="stat-online-badge">0 在线</span>
+                    <span class="badge badge-danger" id="stat-offline-badge">0 离线</span>
                 </div>
             </div>
             <div class="stat-card">
-                <h3>短信总数</h3>
-                <div class="value" id="stat-sms">-</div>
-                <div class="sub-stats">今日: <span id="stat-sms-today">0</span></div>
+                <i data-lucide="message-square" class="stat-card-icon"></i>
+                <div class="stat-label">今日短信</div>
+                <div class="stat-value" id="stat-sms-today">-</div>
+                <div class="stat-detail" style="color: var(--text-secondary);">总计: <span id="stat-sms-total">0</span></div>
             </div>
             <div class="stat-card">
-                <h3>通话总数</h3>
-                <div class="value" id="stat-calls">-</div>
-                <div class="sub-stats">今日: <span id="stat-calls-today">0</span></div>
+                <i data-lucide="phone-call" class="stat-card-icon"></i>
+                <div class="stat-label">今日通话</div>
+                <div class="stat-value" id="stat-calls-today">-</div>
+                <div class="stat-detail" style="color: var(--text-secondary);">总计: <span id="stat-calls-total">0</span></div>
             </div>
         </div>
-        
-        <!-- 标签页 -->
-        <div class="tabs">
-            <button class="tab active" data-panel="devices">设备列表</button>
-            <button class="tab" data-panel="sms">短信记录</button>
-            <button class="tab" data-panel="calls">通话记录</button>
-            <button class="tab" data-panel="logs">消息日志</button>
-            <button class="tab" data-panel="control">控制指令</button>
+
+        <!-- 导航标签 -->
+        <div class="nav-tabs">
+            <div class="nav-item active" onclick="App.UI.switchTab('devices', this)">
+                <i data-lucide="list"></i> 设备列表
+            </div>
+            <div class="nav-item" onclick="App.UI.switchTab('sms', this)">
+                <i data-lucide="message-square"></i> 短信记录
+            </div>
+            <div class="nav-item" onclick="App.UI.switchTab('calls', this)">
+                <i data-lucide="phone"></i> 通话记录
+            </div>
+            <div class="nav-item" onclick="App.UI.switchTab('logs', this)">
+                <i data-lucide="file-text"></i> 消息日志
+            </div>
+            <div class="nav-item" onclick="App.UI.switchTab('control', this)">
+                <i data-lucide="gamepad-2"></i> 远程控制
+            </div>
         </div>
-        
-        <!-- 设备列表面板 -->
-        <div id="devices" class="panel active">
+
+        <!-- 页面 1: 设备列表 -->
+        <div id="panel-devices" class="page-panel active">
             <div class="card">
                 <div class="card-header">
-                    <h2>设备列表</h2>
+                    <h2><i data-lucide="list" size="20"></i> 设备管理</h2>
                     <div>
-                        <button class="btn btn-primary" onclick="showAddDeviceModal()">➕ 添加设备</button>
-                        <button class="btn refresh-btn" onclick="refreshAndLoadDevices()" id="refresh-devices-btn">🔄 刷新状态</button>
+                        <button class="btn btn-primary" onclick="App.UI.showModal('modal-add-device')">
+                            <i data-lucide="plus" size="16"></i> 添加设备
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.Modules.Devices.refresh()">
+                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table>
+                    <div class="table-container">
+                        <table id="table-devices">
                             <thead>
                                 <tr>
                                     <th>设备ID</th>
                                     <th>名称</th>
                                     <th>状态</th>
-                                    <th>IP地址</th>
-                                    <th>WiFi</th>
-                                    <th>SIM卡信息</th>
+                                    <th>网络信息</th>
+                                    <th>SIM卡槽</th>
                                     <th>最后在线</th>
                                 </tr>
                             </thead>
-                            <tbody id="devices-table">
-                                <tr><td colspan="7" class="loading">加载中...</td></tr>
-                            </tbody>
+                            <tbody><!-- JS 填充 --></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 短信记录面板 -->
-        <div id="sms" class="panel">
+
+        <!-- 页面 2: 短信记录 -->
+        <div id="panel-sms" class="page-panel">
             <div class="card">
                 <div class="card-header">
-                    <h2>短信记录</h2>
+                    <h2><i data-lucide="message-square" size="20"></i> 短信记录</h2>
                     <div>
-                        <button class="btn btn-success" onclick="exportData('sms')">📥 导出</button>
-                        <button class="btn refresh-btn" onclick="loadSms()">🔄 刷新</button>
+                        <button class="btn btn-secondary" onclick="App.Modules.SMS.load()">
+                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <input type="text" id="sms-search" placeholder="搜索号码...">
-                        <select id="sms-direction">
+                        <input type="text" class="form-control" id="sms-search" placeholder="搜索号码..." style="flex:1;">
+                        <select class="form-control" id="sms-direction" style="width: 120px;">
                             <option value="">全部方向</option>
-                            <option value="in">收到</option>
-                            <option value="out">发出</option>
+                            <option value="in">接收</option>
+                            <option value="out">发送</option>
                         </select>
-                        <input type="date" id="sms-date-start" placeholder="开始日期">
-                        <input type="date" id="sms-date-end" placeholder="结束日期">
-                        <button class="btn btn-primary" onclick="loadSms()">搜索</button>
-                        <button class="btn btn-secondary btn-sm" onclick="clearSmsFilter()">清空</button>
+                        <button class="btn btn-primary" onclick="App.Modules.SMS.load()">搜索</button>
                     </div>
-                    <div id="sms-batch-toolbar" class="batch-toolbar hidden">
-                        <div class="select-info">已选择 <strong id="sms-selected-count">0</strong> 条记录</div>
-                        <div class="batch-actions">
-                            <button class="btn btn-success btn-sm" onclick="exportSelected('sms')">📥 导出选中</button>
-                            <button class="btn btn-danger btn-sm" onclick="confirmDelete('sms')">🗑️ 删除选中</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearSelection('sms')">取消选择</button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
+                    <div class="table-container">
+                        <table id="table-sms">
                             <thead>
                                 <tr>
-                                    <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="sms-select-all" onchange="toggleSelectAll('sms')"></th>
-                                    <th>设备/SIM卡</th>
+                                    <th>设备</th>
+                                    <th>卡槽</th>
                                     <th>方向</th>
                                     <th>对方号码</th>
                                     <th>内容</th>
                                     <th>时间</th>
                                 </tr>
                             </thead>
-                            <tbody id="sms-table">
-                                <tr><td colspan="6" class="loading">加载中...</td></tr>
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 通话记录面板 -->
-        <div id="calls" class="panel">
+
+        <!-- 页面 3: 通话记录 -->
+        <div id="panel-calls" class="page-panel">
             <div class="card">
                 <div class="card-header">
-                    <h2>通话记录</h2>
+                    <h2><i data-lucide="phone" size="20"></i> 通话记录</h2>
                     <div>
-                        <button class="btn btn-success" onclick="exportData('calls')">📥 导出</button>
-                        <button class="btn refresh-btn" onclick="loadCalls()">🔄 刷新</button>
+                        <button class="btn btn-secondary" onclick="App.Modules.Calls.load()">
+                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <input type="text" id="call-search" placeholder="搜索号码...">
-                        <select id="call-type">
+                        <input type="text" class="form-control" id="call-search" placeholder="搜索号码..." style="flex:1;">
+                        <select class="form-control" id="call-type" style="width: 120px;">
                             <option value="">全部类型</option>
                             <option value="incoming">来电</option>
                             <option value="outgoing">去电</option>
                             <option value="missed">未接</option>
                         </select>
-                        <input type="date" id="call-date-start" placeholder="开始日期">
-                        <input type="date" id="call-date-end" placeholder="结束日期">
-                        <button class="btn btn-primary" onclick="loadCalls()">搜索</button>
-                        <button class="btn btn-secondary btn-sm" onclick="clearCallsFilter()">清空</button>
+                        <button class="btn btn-primary" onclick="App.Modules.Calls.load()">搜索</button>
                     </div>
-                    <div id="calls-batch-toolbar" class="batch-toolbar hidden">
-                        <div class="select-info">已选择 <strong id="calls-selected-count">0</strong> 条记录</div>
-                        <div class="batch-actions">
-                            <button class="btn btn-success btn-sm" onclick="exportSelected('calls')">📥 导出选中</button>
-                            <button class="btn btn-danger btn-sm" onclick="confirmDelete('calls')">🗑️ 删除选中</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearSelection('calls')">取消选择</button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
+                    <div class="table-container">
+                        <table id="table-calls">
                             <thead>
                                 <tr>
-                                    <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="calls-select-all" onchange="toggleSelectAll('calls')"></th>
-                                    <th>设备/SIM卡</th>
+                                    <th>设备</th>
+                                    <th>卡槽</th>
                                     <th>消息类型</th>
                                     <th>通话分类</th>
                                     <th>对方号码</th>
@@ -1394,1756 +548,807 @@
                                     <th>时长</th>
                                 </tr>
                             </thead>
-                            <tbody id="calls-table">
-                                <tr><td colspan="7" class="loading">加载中...</td></tr>
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 消息日志面板 -->
-        <div id="logs" class="panel">
+
+        <!-- 页面 4: 消息日志 -->
+        <div id="panel-logs" class="page-panel">
             <div class="card">
                 <div class="card-header">
-                    <h2>消息日志</h2>
+                    <h2><i data-lucide="file-text" size="20"></i> 消息日志</h2>
                     <div>
-                        <button class="btn btn-success" onclick="exportData('logs')">📥 导出</button>
-                        <button class="btn refresh-btn" onclick="loadLogs()">🔄 刷新</button>
+                        <button class="btn btn-secondary" onclick="App.Modules.Logs.load()">
+                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <select id="log-msg-type">
+                        <select class="form-control" id="log-msg-type" style="flex:1;">
                             <option value="">全部消息类型</option>
-                            <optgroup label="━━ 按大类筛选 ━━">
-                                <option value="network">📡 所有联网消息 (100-102)</option>
-                                <option value="sim">📱 所有SIM卡消息 (202-209)</option>
-                                <option value="sms">💬 所有短信消息 (501-502)</option>
-                                <option value="call">📞 所有电话消息 (601-642)</option>
-                                <option value="call_ctrl">🎛️ 所有电话控制 (681-689)</option>
-                                <option value="command">⚙️ 所有命令应答 (401-402)</option>
-                                <option value="module">🔌 通讯模组消息 (301)</option>
-                            </optgroup>
-                            <optgroup label="━━ 联网消息 ━━">
-                                <option value="100">　100 - WIFI已联网</option>
-                                <option value="101">　101 - 卡槽1已联网</option>
-                                <option value="102">　102 - 卡槽2已联网</option>
-                            </optgroup>
-                            <optgroup label="━━ SIM卡消息 ━━">
-                                <option value="202">　202 - SIM卡基站注册中</option>
-                                <option value="203">　203 - SIM卡ID已获取</option>
-                                <option value="204">　204 - SIM卡已就绪</option>
-                                <option value="205">　205 - SIM卡已弹出</option>
-                                <option value="209">　209 - SIM卡异常</option>
-                            </optgroup>
-                            <optgroup label="━━ 短信消息 ━━">
-                                <option value="501">　501 - 新短信</option>
-                                <option value="502">　502 - 短信外发成功</option>
-                            </optgroup>
-                            <optgroup label="━━ 电话消息 ━━">
-                                <option value="601">　601 - 来电振铃</option>
-                                <option value="602">　602 - 来电接通</option>
-                                <option value="603">　603 - 对方挂断来电</option>
-                                <option value="620">　620 - 去电拨号中</option>
-                                <option value="621">　621 - 去电对方振铃中</option>
-                                <option value="622">　622 - 去电已接通</option>
-                                <option value="623">　623 - 去电已挂断</option>
-                                <option value="641">　641 - 通话中本地按键</option>
-                                <option value="642">　642 - 通话中远程按键</option>
-                            </optgroup>
-                            <optgroup label="━━ 电话控制应答 ━━">
-                                <option value="681">　681 - 外呼拨号成功</option>
-                                <option value="682">　682 - 外呼拨号失败</option>
-                                <option value="684">　684 - 接听成功</option>
-                                <option value="685">　685 - 接听失败</option>
-                                <option value="687">　687 - TTS播放成功</option>
-                                <option value="688">　688 - TTS播放失败</option>
-                                <option value="689">　689 - TTS播放结束</option>
-                            </optgroup>
-                            <optgroup label="━━ 其他消息 ━━">
-                                <option value="301">　301 - 通讯模组错误</option>
-                                <option value="401">　401 - 命令已收到</option>
-                                <option value="402">　402 - 命令已处理</option>
+                            <optgroup label="消息大类">
+                                <option value="network">联网消息 (100-102)</option>
+                                <option value="sim">SIM卡消息 (202-209)</option>
+                                <option value="sms">短信消息 (501-502)</option>
+                                <option value="call">电话消息 (601-642)</option>
+                                <option value="call_ctrl">电话控制回应 (681-689)</option>
+                                <option value="command">命令应答 (401-402)</option>
+                                <option value="module">通讯模组 (301)</option>
                             </optgroup>
                         </select>
-                        <input type="date" id="log-date-start" placeholder="开始日期">
-                        <input type="date" id="log-date-end" placeholder="结束日期">
-                        <button class="btn btn-primary" onclick="loadLogs()">搜索</button>
-                        <button class="btn btn-secondary btn-sm" onclick="clearLogsFilter()">清空</button>
+                        <button class="btn btn-primary" onclick="App.Modules.Logs.load()">搜索</button>
                     </div>
-                    <div id="logs-batch-toolbar" class="batch-toolbar hidden">
-                        <div class="select-info">已选择 <strong id="logs-selected-count">0</strong> 条记录</div>
-                        <div class="batch-actions">
-                            <button class="btn btn-success btn-sm" onclick="exportSelected('logs')">📥 导出选中</button>
-                            <button class="btn btn-danger btn-sm" onclick="confirmDelete('logs')">🗑️ 删除选中</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearSelection('logs')">取消选择</button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
+                    <div class="table-container">
+                        <table id="table-logs">
                             <thead>
                                 <tr>
-                                    <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="logs-select-all" onchange="toggleSelectAll('logs')"></th>
-                                    <th>设备/SIM卡</th>
+                                    <th>设备</th>
+                                    <th>卡槽</th>
                                     <th>消息类型</th>
                                     <th>类型名称</th>
                                     <th>时间</th>
                                 </tr>
                             </thead>
-                            <tbody id="logs-table">
-                                <tr><td colspan="5" class="loading">加载中...</td></tr>
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 控制指令面板 -->
-        <div id="control" class="panel">
+
+        <!-- 页面 5: 控制终端 -->
+        <div id="panel-control" class="page-panel">
             <div class="card">
                 <div class="card-header">
-                    <h2>📡 向开发板发送控制指令</h2>
+                    <h2><i data-lucide="terminal" size="20"></i> 发送指令</h2>
                 </div>
                 <div class="card-body">
-                    <div class="control-form">
-                        <div class="form-section">
-                            <h3>设备连接信息</h3>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="ctrl-device">选择设备</label>
-                                    <select id="ctrl-device" onchange="onDeviceSelect()">
-                                        <option value="">-- 选择设备 --</option>
-                                    </select>
+                    <div style="max-width: 800px;">
+                        <div class="search-box" style="flex-direction: column;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">目标设备</label>
+                                    <select id="ctrl-device-select" class="form-control" onchange="App.Modules.Control.onDeviceSelect()"></select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="ctrl-ip">设备IP地址 *</label>
-                                    <input type="text" id="ctrl-ip" placeholder="如: 192.168.1.100">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">设备IP</label>
+                                    <input type="text" id="ctrl-device-ip" class="form-control" placeholder="设备IP地址">
                                 </div>
-                                <div class="form-group">
-                                    <label for="ctrl-admin-user">管理员账号</label>
-                                    <input type="text" id="ctrl-admin-user" placeholder="开发板管理员账号">
+                            </div>
+
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%; margin-top: 10px;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">开发板账号</label>
+                                    <input type="text" id="ctrl-board-user" class="form-control" value="admin" placeholder="admin">
                                 </div>
-                                <div class="form-group">
-                                    <label for="ctrl-admin-pass">管理员密码</label>
-                                    <input type="password" id="ctrl-admin-pass" placeholder="开发板管理员密码">
-                                </div>
-                                <div class="form-group" style="grid-column: 1 / -1;">
-                                    <label for="ctrl-token">Token (可选)</label>
-                                    <input type="text" id="ctrl-token" placeholder="输入账号密码可自动计算，或直接粘贴Token">
-                                    <small>登录开发板后台 → 密码管理 → 复制Token，或输入账号密码自动计算</small>
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">开发板密码</label>
+                                    <input type="password" id="ctrl-board-pass" class="form-control" value="admin" placeholder="密码">
                                 </div>
                             </div>
                             
-                            <!-- Token 计算器 -->
-                            <div class="token-calculator" style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                                <h4 style="font-size: 14px; color: #475569; margin-bottom: 12px;">🔐 Token 计算器</h4>
-                                <div class="form-grid" style="gap: 10px;">
-                                    <div class="form-group">
-                                        <label for="calc-dev-id">开发板设备ID</label>
-                                        <input type="text" id="calc-dev-id" placeholder="如: AAAA1234">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="calc-admin-user">管理员账号</label>
-                                        <input type="text" id="calc-admin-user" placeholder="开发板管理员账号">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="calc-admin-pass">管理员密码</label>
-                                        <input type="password" id="calc-admin-pass" placeholder="开发板管理员密码">
-                                    </div>
-                                </div>
-                                <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                    <button class="btn btn-primary btn-sm" onclick="calculateToken()">🧮 计算Token</button>
-                                    <button class="btn btn-secondary btn-sm" onclick="fillTokenToInput()">📋 填入上方</button>
-                                    <span id="calc-token-result" style="font-family: monospace; font-size: 13px; color: #059669; word-break: break-all;"></span>
-                                </div>
-                                <small style="display: block; margin-top: 8px; color: #94a3b8;">计算规则: SHA256(设备ID|管理员账号|管理员密码)</small>
-                            </div>
+                            <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary); margin-top: 10px;">选择指令</label>
+                            <select id="ctrl-cmd-select" class="form-control" onchange="App.Modules.Control.onCmdSelect()">
+                                <option value="">-- 请选择 --</option>
+                            </select>
                         </div>
                         
-                        <div class="form-section">
-                            <h3>控制命令</h3>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="ctrl-cmd">选择命令 *</label>
-                                    <select id="ctrl-cmd" onchange="onCommandSelect()">
-                                        <option value="">-- 选择命令 --</option>
-                                        <optgroup label="设备控制">
-                                            <option value="stat">stat - 获取设备状态</option>
-                                            <option value="restart">restart - 重启设备</option>
-                                            <option value="now">now - 设置时间</option>
-                                            <option value="pingsec">pingsec - 设置Ping间隔</option>
-                                            <option value="dailyrst">dailyrst - 设置每日重启时间</option>
-                                            <option value="chpwduser">chpwduser - 修改用户密码</option>
-                                        </optgroup>
-                                        <optgroup label="卡槽控制">
-                                            <option value="slotoff">slotoff - 指定卡槽关机</option>
-                                            <option value="slotrst">slotrst - 指定卡槽重启</option>
-                                            <option value="slotplmn">slotplmn - 设置运营商PLMN</option>
-                                        </optgroup>
-                                        <optgroup label="短信">
-                                            <option value="sendsms">sendsms - 发送短信</option>
-                                            <option value="querysms">querysms - 查询本地短信</option>
-                                        </optgroup>
-                                        <optgroup label="电话">
-                                            <option value="teldial">teldial - 拨打电话</option>
-                                            <option value="telanswer">telanswer - 接听来电</option>
-                                            <option value="telhangup">telhangup - 挂断电话</option>
-                                            <option value="telstarttts">telstarttts - 播放TTS语音</option>
-                                            <option value="telstoptts">telstoptts - 停止TTS语音</option>
-                                            <option value="telkeypress">telkeypress - 发送DTMF按键</option>
-                                            <option value="querytel">querytel - 查询通话记录</option>
-                                        </optgroup>
-                                        <optgroup label="WIFI">
-                                            <option value="wf">wf - WiFi开关</option>
-                                            <option value="addwf">addwf - 添加WiFi热点</option>
-                                            <option value="delwf">delwf - 删除WiFi热点</option>
-                                        </optgroup>
-                                        <optgroup label="OTA升级">
-                                            <option value="dailyota">dailyota - 设置每日升级时间</option>
-                                            <option value="otanow">otanow - 立即升级</option>
-                                        </optgroup>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div id="cmd-params" class="cmd-params"></div>
-                            
-                            <div class="form-actions">
-                                <button class="btn btn-primary" onclick="sendCommand()">🚀 发送命令</button>
-                                <button class="btn refresh-btn" onclick="clearResult()">清空结果</button>
-                            </div>
+                        <div id="ctrl-params-container" style="margin: 20px 0;"></div>
+                        
+                        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="App.Modules.Control.send()">
+                                <i data-lucide="send" size="16"></i> 发送指令
+                            </button>
                         </div>
                         
-                        <div class="form-section">
-                            <h3>执行结果</h3>
-                            <pre id="ctrl-result" class="result-box">等待发送命令...</pre>
+                        <div style="margin-top: 20px;">
+                            <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">执行结果</label>
+                            <pre id="ctrl-result" style="background: #1e293b; color: #a5f3fc; padding: 15px; border-radius: 8px; font-family: monospace; min-height: 100px; margin-top: 5px; white-space: pre-wrap;">等待指令...</pre>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- 添加设备弹窗 -->
-    <div id="add-device-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>➕ 添加设备</h3>
-                <button class="modal-close" onclick="hideAddDeviceModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>设备ID <span style="color: #ef4444">*</span></label>
-                    <input type="text" id="add-dev-id" placeholder="如: AAAA1234" required>
-                </div>
-                <div class="form-group">
-                    <label>设备名称</label>
-                    <input type="text" id="add-dev-name" placeholder="如: 办公室设备1">
-                </div>
-                <div class="form-group">
-                    <label>设备IP地址</label>
-                    <input type="text" id="add-dev-ip" placeholder="如: 192.168.1.100">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideAddDeviceModal()">取消</button>
-                <button class="btn btn-primary" onclick="addDevice()">添加</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 登录遮罩 -->
-    <div id="login-overlay" class="login-overlay">
+
+    <!-- 登录弹窗 -->
+    <div id="login-overlay" class="login-overlay active">
         <div class="login-card">
-            <div class="login-icon">🔐</div>
-            <h2>IoT设备管理系统</h2>
-            <p>请输入管理员账号密码登录</p>
-            
-            <div id="login-error" class="login-error">
-                <span>⚠️</span>
-                <span id="login-error-text">用户名或密码错误</span>
-            </div>
-            
-            <div class="login-form-group">
-                <label for="login-username">用户名</label>
-                <div class="input-wrapper">
-                    <span class="input-icon">👤</span>
-                    <input type="text" id="login-username" placeholder="请输入用户名" autocomplete="username" autocapitalize="off">
+            <div class="login-icon-wrap"><i data-lucide="lock" size="32"></i></div>
+            <h2>管理员登录</h2>
+            <p>请输入您的凭证以访问控制台</p>
+            <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                <div>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">用户名</label>
+                    <input type="text" id="login-user" class="form-control" placeholder="admin">
                 </div>
-            </div>
-            
-            <div class="login-form-group">
-                <label for="login-password">密码</label>
-                <div class="input-wrapper">
-                    <span class="input-icon">🔑</span>
-                    <input type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password">
+                <div>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">密码</label>
+                    <input type="password" id="login-pass" class="form-control" placeholder="••••••">
                 </div>
-            </div>
-            
-            <div class="login-options">
-                <label>
-                    <input type="checkbox" id="remember-login" checked>
-                    <span>记住登录状态</span>
-                </label>
-            </div>
-            
-            <button class="btn btn-primary login-btn" id="login-btn" onclick="doLogin()">
-                <span class="spinner"></span>
-                <span class="btn-text">登 录</span>
-            </button>
-            
-            <div class="login-footer">
-                安全访问 · 数据加密传输
+                <button class="btn btn-primary" onclick="App.Auth.login()" style="justify-content: center; padding: 12px;">
+                    登录系统 <i data-lucide="arrow-right" size="16"></i>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- 确认删除弹窗 -->
-    <div id="confirm-modal" class="confirm-modal">
-        <div class="confirm-content">
-            <div class="confirm-icon">⚠️</div>
-            <h3>确认删除</h3>
-            <p id="confirm-message">确定要删除选中的记录吗？此操作不可恢复。</p>
-            <div class="confirm-actions">
-                <button class="btn btn-secondary" onclick="hideConfirmModal()">取消</button>
-                <button class="btn btn-danger" id="confirm-delete-btn" onclick="executeDelete()">确认删除</button>
+    <!-- 添加设备弹窗 -->
+    <div id="modal-add-device" class="login-overlay">
+        <div class="login-card" style="text-align: left; max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 600;">添加新设备</h3>
+                <button onclick="App.UI.hideModal('modal-add-device')" style="background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="text" id="add-dev-id" class="form-control" placeholder="设备ID (必填)">
+                <input type="text" id="add-dev-name" class="form-control" placeholder="设备名称">
+                <input type="text" id="add-dev-ip" class="form-control" placeholder="IP地址">
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="App.UI.hideModal('modal-add-device')">取消</button>
+                    <button class="btn btn-primary" onclick="App.Modules.Devices.add()">保存</button>
+                </div>
             </div>
         </div>
     </div>
+    
+    <div id="toast-container" class="toast-container"></div>
 
     <script>
-        const API_BASE = '';  // 相对路径
-        
-        // ==================== 认证管理 ====================
-        
-        const AUTH_KEY = 'iot_server_auth';
-        const REMEMBER_KEY = 'iot_remember_login';
-        const USERNAME_KEY = 'iot_saved_username';
-        const TOKEN_KEY = 'iot_device_token';
-        
-        // 封装带鉴权的 fetch
-        async function apiFetch(url, options = {}) {
-            const headers = options.headers || {};
-            const auth = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
-            
-            // 如果有保存的凭据，添加到请求头
-            if (auth) {
-                // 如果 headers 是 Headers 对象
-                if (headers instanceof Headers) {
-                    headers.append('Authorization', auth);
-                } else {
-                    // 如果 headers 是普通对象
-                    headers['Authorization'] = auth;
-                }
-            }
-            
-            // 确保 headers 被设置回 options
-            options.headers = headers;
-            
-            try {
-                const res = await fetch(url, options);
-                
-                // 处理 401 未授权
-                if (res.status === 401) {
-                    console.warn('认证失败: 401 Unauthorized');
-                    doLogout(false); // 不刷新页面，只显示登录框
-                    showLoginError('登录已过期，请重新登录');
-                    throw new Error('Unauthorized');
-                }
-                
-                return res;
-            } catch (error) {
-                throw error;
-            }
-        }
-        
-        function showLoginError(message) {
-            const errorDiv = document.getElementById('login-error');
-            const errorText = document.getElementById('login-error-text');
-            errorText.textContent = message;
-            errorDiv.classList.add('show');
-        }
-        
-        function hideLoginError() {
-            const errorDiv = document.getElementById('login-error');
-            errorDiv.classList.remove('show');
-        }
-        
-        function setLoginLoading(loading) {
-            const btn = document.getElementById('login-btn');
-            if (loading) {
-                btn.classList.add('loading');
-                btn.disabled = true;
-            } else {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-            }
-        }
-        
-        function checkLogin() {
-            const auth = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
-            const overlay = document.getElementById('login-overlay');
-            const userInfo = document.getElementById('user-info');
-            
-            // 恢复保存的用户名
-            const savedUsername = localStorage.getItem(USERNAME_KEY);
-            if (savedUsername) {
-                document.getElementById('login-username').value = savedUsername;
-            }
-            
-            // 恢复记住登录选项
-            const remember = localStorage.getItem(REMEMBER_KEY);
-            if (remember !== null) {
-                document.getElementById('remember-login').checked = remember === 'true';
-            }
-            
-            if (auth) {
-                overlay.style.opacity = '0';
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                }, 300);
-                userInfo.style.display = 'flex';
-                
-                // 显示当前用户名
-                const currentUser = savedUsername || '管理员';
-                document.getElementById('current-user').textContent = currentUser;
-                
-                return true;
-            } else {
-                overlay.style.display = 'flex';
-                overlay.style.opacity = '1';
-                userInfo.style.display = 'none';
-                // 聚焦到用户名或密码输入框
-                setTimeout(() => {
-                    if (savedUsername) {
-                        document.getElementById('login-password').focus();
-                    } else {
-                        document.getElementById('login-username').focus();
-                    }
-                }, 100);
-                return false;
-            }
-        }
-        
-        async function doLogin() {
-            const user = document.getElementById('login-username').value.trim();
-            const pass = document.getElementById('login-password').value.trim();
-            const remember = document.getElementById('remember-login').checked;
-            
-            hideLoginError();
-            
-            if (!user) {
-                showLoginError('请输入用户名');
-                document.getElementById('login-username').focus();
-                return;
-            }
-            
-            if (!pass) {
-                showLoginError('请输入密码');
-                document.getElementById('login-password').focus();
-                return;
-            }
-            
-            // 生成 Basic Auth 凭据
-            const auth = 'Basic ' + btoa(user + ':' + pass);
-            
-            // 显示加载状态
-            setLoginLoading(true);
-            
-            try {
-                // 验证凭据
-                const res = await fetch(`${API_BASE}/api/stats`, {
-                    headers: { 'Authorization': auth }
-                });
-                
-                if (res.status === 401) {
-                    showLoginError('用户名或密码错误');
-                    document.getElementById('login-password').value = '';
-                    document.getElementById('login-password').focus();
-                    return;
-                }
-                
-                if (!res.ok) {
-                    showLoginError('服务器连接失败，请稍后重试');
-                    return;
-                }
-                
-                // 登录成功，保存凭据
-                if (remember) {
-                    localStorage.setItem(AUTH_KEY, auth);
-                    localStorage.setItem(USERNAME_KEY, user);
-                } else {
-                    sessionStorage.setItem(AUTH_KEY, auth);
-                    localStorage.removeItem(AUTH_KEY);
-                }
-                localStorage.setItem(REMEMBER_KEY, remember.toString());
-                
-                // 显示登录成功
-                checkLogin();
-                
-                // 加载数据
-                loadStats();
-                loadDevices();
-                loadDevicesForControl();
-                
-            } catch (error) {
-                console.error('登录失败:', error);
-                showLoginError('网络连接失败，请检查网络');
-            } finally {
-                setLoginLoading(false);
-            }
-        }
-        
-        function doLogout(reload = true) {
-            localStorage.removeItem(AUTH_KEY);
-            sessionStorage.removeItem(AUTH_KEY);
-            // 保留用户名和记住选项
-            if (reload) {
-                location.reload();
-            } else {
-                checkLogin();
-            }
-        }
+        // 初始化 Lucide 图标
+        lucide.createIcons();
 
-        // 监听回车键登录
-        document.getElementById('login-username').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('login-password').focus();
-            }
-        });
-        
-        document.getElementById('login-password').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                doLogin();
-            }
-        });
-        
-        // 输入时清除错误提示
-        document.getElementById('login-username').addEventListener('input', hideLoginError);
-        document.getElementById('login-password').addEventListener('input', hideLoginError);
-        
-        // ==================== 时间格式化工具 ====================
-        
-        /**
-         * 格式化时间戳为可读时间（北京时间）
-         * 开发板推送的时间戳是按北京时间生成的（即开发板用本地时间计算的Unix时间戳）
-         * 所以这个时间戳比标准UTC时间戳多了8小时，需要补偿
-         * @param {string|number|Date} dateInput - 日期输入（时间戳或字符串）
-         * @returns {string} 格式化后的北京时间字符串
-         */
-        function formatBeijingTime(dateInput) {
-            if (!dateInput) return '-';
+        // ==================== App Namespace (JS Modularization) ====================
+        const App = {
+            config: {
+                apiBase: '', // API 基础路径
+                authKey: 'iot_auth_token'
+            },
             
-            // 处理不同的输入格式
-            if (typeof dateInput === 'number') {
-                // Unix时间戳（秒或毫秒）
-                // 开发板推送的时间戳是用北京时间计算的，所以实际上比真正的UTC时间戳多了8小时
-                // 为了正确显示，我们需要把它当作北京时间来处理
-                const ts = dateInput < 10000000000 ? dateInput * 1000 : dateInput;
-                
-                // 由于时间戳是按北京时间生成的，直接用Date解析会被当作UTC
-                // 我们加上8小时的偏移，然后用UTC方法显示，效果就是显示北京时间
-                const date = new Date(ts + 8 * 60 * 60 * 1000);
-                
-                if (isNaN(date.getTime())) return '-';
-                
-                // 用UTC方法获取时间（因为我们已经加了8小时偏移）
-                const year = date.getUTCFullYear();
-                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(date.getUTCDate()).padStart(2, '0');
-                const hours = String(date.getUTCHours()).padStart(2, '0');
-                const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-                const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-                
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            } else if (typeof dateInput === 'string') {
-                // 如果已经是时间字符串格式 (YYYY-MM-DD HH:MM:SS)，直接返回
-                if (dateInput.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
-                    return dateInput;
+            // 命令定义
+            CMD_PARAMS: {
+                'stat': { desc: '获取设备当前状态信息', params: [] },
+                'restart': { desc: '重启开发板', params: [] },
+                'now': { 
+                    desc: '设置开发板时间',
+                    params: [
+                        { name: 'p1', label: '时间', placeholder: 'YYYYMMDDHHmmss (留空自动获取)', type: 'text' },
+                        { name: 'p3', label: '时区', placeholder: '8 (北京时间)', type: 'number', default: '8' }
+                    ]
+                },
+                'pingsec': { 
+                    desc: '设置Ping消息间隔秒数',
+                    params: [
+                        { name: 'p1', label: '间隔秒数', placeholder: '最小10秒', type: 'number', required: true }
+                    ]
+                },
+                'dailyrst': { 
+                    desc: '设置每日自动重启时间',
+                    params: [
+                        { name: 'p1', label: '重启时间(0-23)', placeholder: '4 (凌晨4点)', type: 'number', required: true }
+                    ]
+                },
+                'chpwduser': {
+                    desc: '修改用户密码',
+                    params: [
+                        { name: 'p1', label: '新密码', placeholder: '至少4位', type: 'text', required: true }
+                    ]
+                },
+                'slotoff': { 
+                    desc: '指定卡槽关机',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
+                    ]
+                },
+                'slotrst': { 
+                    desc: '指定卡槽重启',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
+                    ]
+                },
+                'slotplmn': {
+                    desc: '指定卡注册的运营商',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '运营商代码', placeholder: '如: 46001 (0表示自动)', type: 'number', default: '0' }
+                    ]
+                },
+                'sendsms': { 
+                    desc: '通过指定卡槽发送短信',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '目标号码', placeholder: '手机号码', type: 'text', required: true },
+                        { name: 'p3', label: '短信内容', placeholder: '短信内容', type: 'textarea', required: true },
+                        { name: 'tid', label: '事务ID', placeholder: '用于接收发送结果(可选)', type: 'text' }
+                    ]
+                },
+                'querysms': { 
+                    desc: '查询本地存储的短信记录',
+                    params: [
+                        { name: 'p1', label: '起始位置', placeholder: '从第几条开始 (默认1)', type: 'number', default: '1' },
+                        { name: 'p2', label: '查询条数', placeholder: '查询多少条 (默认10)', type: 'number', default: '10' },
+                        { name: 'p3', label: '关键词', placeholder: '筛选关键词(可选)', type: 'text' }
+                    ]
+                },
+                'teldial': { 
+                    desc: '使用指定卡槽拨打电话',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '目标号码', placeholder: '手机号码', type: 'text', required: true },
+                        { name: 'p3', label: '通话时长(秒)', placeholder: '默认175秒', type: 'number' },
+                        { name: 'p4', label: 'TTS语音内容', placeholder: '拨通后播放的语音', type: 'textarea' },
+                        { name: 'p5', label: 'TTS播放次数', placeholder: '默认1次', type: 'number' },
+                        { name: 'p7', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                    ]
+                },
+                'telanswer': { 
+                    desc: '接听当前来电',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '通话时长(秒)', placeholder: '默认175秒', type: 'number' },
+                        { name: 'p3', label: 'TTS语音内容', placeholder: '接通后播放的语音', type: 'textarea' },
+                        { name: 'p6', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                    ]
+                },
+                'telhangup': { 
+                    desc: '挂断当前通话',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
+                    ]
+                },
+                'telstarttts': {
+                    desc: '播放TTS语音',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: 'TTS内容', placeholder: '要播放的语音内容', type: 'textarea', required: true },
+                        { name: 'p3', label: '播放次数', placeholder: '0表示无限循环', type: 'number', default: '1' },
+                        { name: 'p4', label: '播放间隔(秒)', placeholder: '默认1秒', type: 'number', default: '1' },
+                        { name: 'p5', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                    ]
+                },
+                'telstoptts': {
+                    desc: '停止播放TTS语音',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '停止后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
+                    ]
+                },
+                'telkeypress': {
+                    desc: '发送DTMF按键',
+                    params: [
+                        { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
+                        { name: 'p2', label: '按键序列', placeholder: '如: 123#', type: 'text', required: true },
+                        { name: 'p3', label: '按键时长(ms)', placeholder: '默认200ms', type: 'number', default: '200' },
+                        { name: 'p4', label: '按键间隔(ms)', placeholder: '默认100ms', type: 'number', default: '100' }
+                    ]
+                },
+                'querytel': { 
+                    desc: '查询本地存储的通话记录',
+                    params: [
+                        { name: 'p1', label: '起始位置', placeholder: '从第几条开始 (默认1)', type: 'number', default: '1' },
+                        { name: 'p2', label: '查询条数', placeholder: '查询多少条 (默认10)', type: 'number', default: '10' }
+                    ]
+                },
+                'wf': {
+                    desc: '打开或关闭WiFi',
+                    params: [
+                        { name: 'p1', label: '动作', type: 'select', options: [{v:'on',t:'打开'},{v:'off',t:'关闭'}], required: true }
+                    ]
+                },
+                'addwf': { 
+                    desc: '添加可连接的WiFi热点信息',
+                    params: [
+                        { name: 'p1', label: 'WiFi名称', placeholder: 'WiFi热点名(2.4G)', type: 'text', required: true },
+                        { name: 'p2', label: 'WiFi密码', placeholder: 'WiFi密码', type: 'text', required: true }
+                    ]
+                },
+                'delwf': { 
+                    desc: '删除已保存的WiFi热点信息',
+                    params: [
+                        { name: 'p1', label: 'WiFi名称', placeholder: '要删除的WiFi热点名', type: 'text', required: true }
+                    ]
+                },
+                'dailyota': {
+                    desc: '设置每日自动升级时间',
+                    params: [
+                        { name: 'p1', label: '升级时间(0-23)', placeholder: '3 (凌晨3点)', type: 'number', required: true }
+                    ]
+                },
+                'otanow': {
+                    desc: '立即执行OTA升级',
+                    params: [
+                        { name: 'tid', label: '事务ID', placeholder: '用于接收结果(可选)', type: 'text' }
+                    ]
                 }
-                // 尝试解析为数字（时间戳）
-                const num = Number(dateInput);
-                if (!isNaN(num)) {
-                    return formatBeijingTime(num);
-                }
-                // ISO格式或其他字符串格式，可能来自服务器的created_at
-                // 服务器是UTC时区，created_at存储的是UTC时间，需要转换为北京时间
-                const date = new Date(dateInput);
-                if (isNaN(date.getTime())) return '-';
-                
-                // 加8小时转换为北京时间
-                const beijingDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-                
-                const year = beijingDate.getUTCFullYear();
-                const month = String(beijingDate.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(beijingDate.getUTCDate()).padStart(2, '0');
-                const hours = String(beijingDate.getUTCHours()).padStart(2, '0');
-                const minutes = String(beijingDate.getUTCMinutes()).padStart(2, '0');
-                const seconds = String(beijingDate.getUTCSeconds()).padStart(2, '0');
-                
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            } else {
-                return '-';
-            }
-        }
-        
-        /**
-         * 格式化SIM卡信息显示
-         * @param {number} slot - 卡槽号
-         * @param {string} msisdn - 手机号码
-         * @returns {string} HTML字符串
-         */
-        function formatSimInfo(slot, msisdn) {
-            const slotText = slot ? `卡${slot}` : '';
-            const phoneText = msisdn || '';
-            if (slotText || phoneText) {
-                return `<span class="sim-slot">${slotText}${phoneText ? ': ' + phoneText : ''}</span>`;
-            }
-            return '';
-        }
-        
-        /**
-         * 格式化设备和SIM卡信息
-         * @param {string} devId - 设备ID
-         * @param {number} slot - 卡槽号
-         * @param {string} msisdn - 手机号码
-         * @returns {string} HTML字符串
-         */
-        function formatDeviceSimInfo(devId, slot, msisdn) {
-            let html = `<span class="device-id">${devId}</span>`;
-            if (slot) {
-                html += `<br><span class="sim-slot">卡${slot}${msisdn ? ': ' + msisdn : ''}</span>`;
-            }
-            return html;
-        }
-        
-        // ==================== 标签页切换 ====================
-        
-        // 记录每个面板是否已加载过数据
-        const panelLoaded = {
-            devices: false,
-            sms: false,
-            calls: false,
-            logs: false,
-            control: false
-        };
-        
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                const panelId = tab.dataset.panel;
-                document.getElementById(panelId).classList.add('active');
-                
-                // 切换到面板时自动加载数据（如果还没加载过）
-                if (!panelLoaded[panelId]) {
-                    switch (panelId) {
-                        case 'devices':
-                            loadDevices();
-                            break;
-                        case 'sms':
-                            loadSms();
-                            break;
-                        case 'calls':
-                            loadCalls();
-                            break;
-                        case 'logs':
-                            loadLogs();
-                            break;
-                        case 'control':
-                            // 控制面板不需要自动加载
-                            break;
-                    }
-                    panelLoaded[panelId] = true;
-                }
-            });
-        });
-        
-        // ==================== 加载统计数据 ====================
-        
-        async function loadStats() {
-            try {
-                const res = await apiFetch(`${API_BASE}/api/stats`);
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('stat-devices').textContent = data.data.devices.total;
-                    document.getElementById('stat-online').textContent = `${data.data.devices.online} 在线`;
-                    document.getElementById('stat-offline').textContent = `${data.data.devices.offline} 离线`;
-                    document.getElementById('stat-sms').textContent = data.data.sms.total;
-                    document.getElementById('stat-sms-today').textContent = data.data.sms.today;
-                    document.getElementById('stat-calls').textContent = data.data.calls.total;
-                    document.getElementById('stat-calls-today').textContent = data.data.calls.today;
-                }
-            } catch (error) {
-                console.error('加载统计失败:', error);
-            }
-        }
-        
-        // ==================== 加载设备列表 ====================
-        
-        async function loadDevices() {
-            const tbody = document.getElementById('devices-table');
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
-            
-            try {
-                const res = await apiFetch(`${API_BASE}/api/devices`);
-                const data = await res.json();
-                
-                if (data.success && data.data.length > 0) {
-                    tbody.innerHTML = data.data.map(device => `
-                        <tr>
-                            <td><span class="device-id">${device.dev_id}</span></td>
-                            <td>${device.name || '-'}</td>
-                            <td>
-                                <span class="status-badge ${device.status === 'online' ? 'status-online' : 'status-offline'}">
-                                    ${device.status === 'online' ? '在线' : '离线'}
-                                </span>
-                            </td>
-                            <td>${device.last_ip || '-'}</td>
-                            <td>${device.last_ssid || '-'} ${device.last_dbm ? `(${device.last_dbm}%)` : ''}</td>
-                            <td>
-                                <div class="sim-info">
-                                    ${device.sim_cards && device.sim_cards.length > 0 
-                                        ? device.sim_cards.map(sim => `
-                                            <span class="sim-slot ${sim.status === 'ready' ? 'ready' : sim.status === 'error' ? 'error' : ''}">
-                                                卡${sim.slot}: ${sim.msisdn || (sim.iccid ? sim.iccid.slice(-6) : '未知')}
-                                            </span>
-                                        `).join(' ')
-                                        : '-'
-                                    }
-                                </div>
-                            </td>
-                            <td>${formatBeijingTime(device.last_seen_at)}</td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-message">暂无设备数据</td></tr>';
-                }
-            } catch (error) {
-                console.error('加载设备失败:', error);
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-message">加载失败</td></tr>';
-            }
-        }
-        
-        // 刷新设备状态并重新加载列表
-        async function refreshAndLoadDevices() {
-            const btn = document.getElementById('refresh-devices-btn');
-            const originalText = btn.textContent;
-            btn.textContent = '⏳ 刷新中...';
-            btn.disabled = true;
-            
-            try {
-                await refreshAllDeviceStatus();
-                await loadDevices();
-                loadStats();
-            } finally {
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
-        }
-        
-        // ==================== 添加设备功能 ====================
-        
-        function showAddDeviceModal() {
-            document.getElementById('add-device-modal').classList.add('active');
-            document.getElementById('add-dev-id').value = '';
-            document.getElementById('add-dev-name').value = '';
-            document.getElementById('add-dev-ip').value = '';
-            document.getElementById('add-dev-id').focus();
-        }
-        
-        function hideAddDeviceModal() {
-            document.getElementById('add-device-modal').classList.remove('active');
-        }
-        
-        async function addDevice() {
-            const devId = document.getElementById('add-dev-id').value.trim();
-            const name = document.getElementById('add-dev-name').value.trim();
-            const ip = document.getElementById('add-dev-ip').value.trim();
-            
-            if (!devId) {
-                alert('请输入设备ID');
-                return;
-            }
-            
-            try {
-                const res = await apiFetch(`${API_BASE}/api/devices`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ devId, name, ip })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    alert('设备添加成功');
-                    hideAddDeviceModal();
-                    loadDevices();
-                    loadDevicesForControl();
-                    loadStats();
-                } else {
-                    alert('添加失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('添加设备失败:', error);
-                alert('添加设备失败: ' + error.message);
-            }
-        }
-        
-        // ESC 键关闭弹窗
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideAddDeviceModal();
-            }
-        });
-        
-        // 点击弹窗外部关闭
-        document.getElementById('add-device-modal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                hideAddDeviceModal();
-            }
-        });
-        
-        // ==================== 加载短信记录 ====================
-        
-        // 存储当前数据用于导出
-        let currentSmsData = [];
-        let currentCallsData = [];
-        let currentLogsData = [];
-        
-        async function loadSms() {
-            const tbody = document.getElementById('sms-table');
-            tbody.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
-            clearSelection('sms');
-            
-            const phoneNum = document.getElementById('sms-search').value;
-            const direction = document.getElementById('sms-direction').value;
-            const dateStart = document.getElementById('sms-date-start').value;
-            const dateEnd = document.getElementById('sms-date-end').value;
-            
-            try {
-                let url = `${API_BASE}/api/sms?limit=100`;
-                if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
-                if (direction) url += `&direction=${direction}`;
-                if (dateStart) url += `&dateStart=${dateStart}`;
-                if (dateEnd) url += `&dateEnd=${dateEnd}`;
-                
-                const res = await apiFetch(url);
-                const data = await res.json();
-                
-                if (data.success && data.data.length > 0) {
-                    currentSmsData = data.data;
-                    tbody.innerHTML = data.data.map(sms => `
-                        <tr data-id="${sms.id}">
-                            <td><input type="checkbox" class="row-checkbox" onchange="onRowSelect('sms')"></td>
-                            <td>${formatDeviceSimInfo(sms.dev_id, sms.slot, sms.msisdn)}</td>
-                            <td>${sms.direction === 'in' ? '📥 收到' : '📤 发出'}</td>
-                            <td>${sms.phone_num}</td>
-                            <td><div class="sms-content" title="${escapeHtml(sms.content)}">${escapeHtml(sms.content)}</div></td>
-                            <td>${formatBeijingTime(sms.sms_time || sms.created_at)}</td>
-                        </tr>
-                    `).join('');
-                } else {
-                    currentSmsData = [];
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">暂无短信记录</td></tr>';
-                }
-            } catch (error) {
-                console.error('加载短信失败:', error);
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-message">加载失败</td></tr>';
-            }
-        }
-        
-        // ==================== 加载通话记录 ====================
-        
-        async function loadCalls() {
-            const tbody = document.getElementById('calls-table');
-            tbody.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
-            clearSelection('calls');
-            
-            const phoneNum = document.getElementById('call-search').value;
-            const callType = document.getElementById('call-type').value;
-            const dateStart = document.getElementById('call-date-start').value;
-            const dateEnd = document.getElementById('call-date-end').value;
-            
-            try {
-                let url = `${API_BASE}/api/calls?limit=100`;
-                if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
-                if (callType) url += `&callType=${callType}`;
-                if (dateStart) url += `&dateStart=${dateStart}`;
-                if (dateEnd) url += `&dateEnd=${dateEnd}`;
-                
-                const res = await apiFetch(url);
-                const data = await res.json();
-                
-                if (data.success && data.data.length > 0) {
-                    currentCallsData = data.data;
-                    tbody.innerHTML = data.data.map(call => `
-                        <tr data-id="${call.id}">
-                            <td><input type="checkbox" class="row-checkbox" onchange="onRowSelect('calls')"></td>
-                            <td>${formatDeviceSimInfo(call.dev_id, call.slot, call.msisdn)}</td>
-                            <td>${getCallMsgTypeText(call.msg_type || 603)}</td>
-                            <td>${getCallTypeText(call.call_type)}</td>
-                            <td>${call.phone_num}</td>
-                            <td>${formatBeijingTime(call.start_time)}</td>
-                            <td>${formatDuration(call.duration)}</td>
-                        </tr>
-                    `).join('');
-                } else {
-                    currentCallsData = [];
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-message">暂无通话记录</td></tr>';
-                }
-            } catch (error) {
-                console.error('加载通话失败:', error);
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-message">加载失败</td></tr>';
-            }
-        }
-        
-        // ==================== 加载消息日志 ====================
-        
-        async function loadLogs() {
-            const tbody = document.getElementById('logs-table');
-            tbody.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
-            clearSelection('logs');
-            
-            const msgTypeValue = document.getElementById('log-msg-type').value;
-            const dateStart = document.getElementById('log-date-start').value;
-            const dateEnd = document.getElementById('log-date-end').value;
-            
-            try {
-                let url = `${API_BASE}/api/messages?limit=100`;
-                
-                // 判断是按大类筛选还是具体类型筛选
-                if (msgTypeValue) {
-                    // 检查是否为大类(非数字)
-                    if (isNaN(msgTypeValue)) {
-                        url += `&msgCategory=${msgTypeValue}`;
-                    } else {
-                        url += `&msgType=${msgTypeValue}`;
-                    }
-                }
-                
-                if (dateStart) url += `&dateStart=${dateStart}`;
-                if (dateEnd) url += `&dateEnd=${dateEnd}`;
-                
-                const res = await apiFetch(url);
-                const data = await res.json();
-                
-                if (data.success && data.data.length > 0) {
-                    currentLogsData = data.data;
-                    tbody.innerHTML = data.data.map(log => {
-                        // 尝试从raw_data中解析slot、msisdn和msgTs
-                        let slot = '';
-                        let msisdn = '';
-                        let msgTs = null;
-                        try {
-                            const rawData = JSON.parse(log.raw_data || '{}');
-                            slot = rawData.slot || '';
-                            msisdn = rawData.msIsdn || '';
-                            msgTs = rawData.msgTs || null;
-                        } catch (e) {}
+            },
+
+            // --- 认证模块 ---
+            Auth: {
+                init() {
+                    const token = localStorage.getItem(App.config.authKey);
+                    if (token) {
+                        document.getElementById('login-overlay').classList.remove('active');
+                        document.getElementById('user-menu').style.display = 'flex';
+                        App.Modules.Stats.load();
+                        App.Modules.Devices.load();
+                        App.Modules.Control.init();
                         
-                        return `
-                            <tr data-id="${log.id}">
-                                <td><input type="checkbox" class="row-checkbox" onchange="onRowSelect('logs')"></td>
-                                <td>${formatDeviceSimInfo(log.dev_id, slot, msisdn)}</td>
-                                <td>${log.type}</td>
-                                <td>${log.type_name}</td>
-                                <td>${formatBeijingTime(msgTs || log.created_at)}</td>
-                            </tr>
-                        `;
-                    }).join('');
-                } else {
-                    currentLogsData = [];
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-message">暂无消息日志</td></tr>';
-                }
-            } catch (error) {
-                console.error('加载日志失败:', error);
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-message">加载失败</td></tr>';
-            }
-        }
-        
-        // ==================== 清空筛选条件 ====================
-        
-        function clearSmsFilter() {
-            document.getElementById('sms-search').value = '';
-            document.getElementById('sms-direction').value = '';
-            document.getElementById('sms-date-start').value = '';
-            document.getElementById('sms-date-end').value = '';
-            loadSms();
-        }
-        
-        function clearCallsFilter() {
-            document.getElementById('call-search').value = '';
-            document.getElementById('call-type').value = '';
-            document.getElementById('call-date-start').value = '';
-            document.getElementById('call-date-end').value = '';
-            loadCalls();
-        }
-        
-        function clearLogsFilter() {
-            document.getElementById('log-msg-type').value = '';
-            document.getElementById('log-date-start').value = '';
-            document.getElementById('log-date-end').value = '';
-            loadLogs();
-        }
-        
-        // ==================== 批量操作功能 ====================
-        
-        let pendingDeleteType = null;
-        
-        // 获取选中的行ID
-        function getSelectedIds(type) {
-            const tbody = document.getElementById(`${type}-table`);
-            const rows = tbody.querySelectorAll('tr[data-id]');
-            const selectedIds = [];
-            rows.forEach(row => {
-                const checkbox = row.querySelector('.row-checkbox');
-                if (checkbox && checkbox.checked) {
-                    selectedIds.push(parseInt(row.dataset.id));
-                }
-            });
-            return selectedIds;
-        }
-        
-        // 全选/取消全选
-        function toggleSelectAll(type) {
-            const selectAll = document.getElementById(`${type}-select-all`);
-            const tbody = document.getElementById(`${type}-table`);
-            const checkboxes = tbody.querySelectorAll('.row-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = selectAll.checked;
-                cb.closest('tr').classList.toggle('selected', selectAll.checked);
-            });
-            updateBatchToolbar(type);
-        }
-        
-        // 单行选择变化
-        function onRowSelect(type) {
-            const tbody = document.getElementById(`${type}-table`);
-            const checkboxes = tbody.querySelectorAll('.row-checkbox');
-            const selectAll = document.getElementById(`${type}-select-all`);
-            
-            // 更新行高亮
-            checkboxes.forEach(cb => {
-                cb.closest('tr').classList.toggle('selected', cb.checked);
-            });
-            
-            // 更新全选框状态
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            const someChecked = Array.from(checkboxes).some(cb => cb.checked);
-            selectAll.checked = allChecked;
-            selectAll.indeterminate = someChecked && !allChecked;
-            
-            updateBatchToolbar(type);
-        }
-        
-        // 更新批量操作工具栏
-        function updateBatchToolbar(type) {
-            const selectedIds = getSelectedIds(type);
-            const toolbar = document.getElementById(`${type}-batch-toolbar`);
-            const countSpan = document.getElementById(`${type}-selected-count`);
-            
-            if (selectedIds.length > 0) {
-                toolbar.classList.remove('hidden');
-                countSpan.textContent = selectedIds.length;
-            } else {
-                toolbar.classList.add('hidden');
-            }
-        }
-        
-        // 清除选择
-        function clearSelection(type) {
-            const selectAll = document.getElementById(`${type}-select-all`);
-            const tbody = document.getElementById(`${type}-table`);
-            
-            if (selectAll) selectAll.checked = false;
-            if (tbody) {
-                tbody.querySelectorAll('.row-checkbox').forEach(cb => {
-                    cb.checked = false;
-                    cb.closest('tr').classList.remove('selected');
-                });
-            }
-            updateBatchToolbar(type);
-        }
-        
-        // 导出所有数据
-        function exportData(type) {
-            let data, filename, headers;
-            
-            switch (type) {
-                case 'sms':
-                    data = currentSmsData;
-                    filename = `短信记录_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '方向', '对方号码', '内容', '时间'];
-                    break;
-                case 'calls':
-                    data = currentCallsData;
-                    filename = `通话记录_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '消息类型', '通话分类', '对方号码', '时间', '时长(秒)'];
-                    break;
-                case 'logs':
-                    data = currentLogsData;
-                    filename = `消息日志_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '消息类型', '类型名称', '时间'];
-                    break;
-            }
-            
-            if (!data || data.length === 0) {
-                alert('没有数据可导出');
-                return;
-            }
-            
-            exportToCsv(data, filename, headers, type);
-        }
-        
-        // 导出选中数据
-        function exportSelected(type) {
-            const selectedIds = getSelectedIds(type);
-            if (selectedIds.length === 0) {
-                alert('请先选择要导出的记录');
-                return;
-            }
-            
-            let data, filename, headers;
-            
-            switch (type) {
-                case 'sms':
-                    data = currentSmsData.filter(item => selectedIds.includes(item.id));
-                    filename = `短信记录_选中_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '方向', '对方号码', '内容', '时间'];
-                    break;
-                case 'calls':
-                    data = currentCallsData.filter(item => selectedIds.includes(item.id));
-                    filename = `通话记录_选中_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '卡槽', '手机号', '消息类型', '通话分类', '对方号码', '时间', '时长(秒)'];
-                    break;
-                case 'logs':
-                    data = currentLogsData.filter(item => selectedIds.includes(item.id));
-                    filename = `消息日志_选中_${formatDateForFilename()}.csv`;
-                    headers = ['设备ID', '消息类型', '类型名称', '时间'];
-                    break;
-            }
-            
-            exportToCsv(data, filename, headers, type);
-        }
-        
-        // 生成CSV并下载
-        function exportToCsv(data, filename, headers, type) {
-            let csvContent = '\ufeff' + headers.join(',') + '\n';  // BOM for Excel
-            
-            data.forEach(item => {
-                let row;
-                switch (type) {
-                    case 'sms':
-                        row = [
-                            item.dev_id,
-                            item.slot || '',
-                            item.msisdn || '',
-                            item.direction === 'in' ? '收到' : '发出',
-                            item.phone_num,
-                            `"${(item.content || '').replace(/"/g, '""')}"`,
-                            formatBeijingTime(item.sms_time || item.created_at)
-                        ];
-                        break;
-                    case 'calls':
-                        row = [
-                            item.dev_id,
-                            item.slot || '',
-                            item.msisdn || '',
-                            getCallMsgTypeText(item.msg_type || 603).replace(/[\ud83c-\ud83e][\udc00-\udfff]/g, ''),  // 移除emoji
-                            item.call_type === 'incoming' ? '来电' : item.call_type === 'outgoing' ? '去电' : '未接',
-                            item.phone_num,
-                            formatBeijingTime(item.start_time),
-                            item.duration || 0
-                        ];
-                        break;
-                    case 'logs':
-                        row = [
-                            item.dev_id,
-                            item.type,
-                            item.type_name,
-                            formatBeijingTime(item.created_at)
-                        ];
-                        break;
-                }
-                csvContent += row.join(',') + '\n';
-            });
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            link.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        // 格式化日期用于文件名
-        function formatDateForFilename() {
-            const now = new Date();
-            return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-        }
-        
-        // 显示删除确认弹窗
-        function confirmDelete(type) {
-            const selectedIds = getSelectedIds(type);
-            if (selectedIds.length === 0) {
-                alert('请先选择要删除的记录');
-                return;
-            }
-            
-            pendingDeleteType = type;
-            const typeNames = { sms: '短信', calls: '通话', logs: '日志' };
-            document.getElementById('confirm-message').textContent = 
-                `确定要删除选中的 ${selectedIds.length} 条${typeNames[type]}记录吗？此操作不可恢复。`;
-            document.getElementById('confirm-modal').classList.add('active');
-        }
-        
-        // 隐藏确认弹窗
-        function hideConfirmModal() {
-            document.getElementById('confirm-modal').classList.remove('active');
-            pendingDeleteType = null;
-        }
-        
-        // 执行删除操作
-        async function executeDelete() {
-            if (!pendingDeleteType) return;
-            
-            const type = pendingDeleteType;
-            const selectedIds = getSelectedIds(type);
-            
-            const btn = document.getElementById('confirm-delete-btn');
-            btn.textContent = '删除中...';
-            btn.disabled = true;
-            
-            try {
-                const apiEndpoints = { sms: 'sms', calls: 'calls', logs: 'messages' };
-                const res = await apiFetch(`${API_BASE}/api/${apiEndpoints[type]}/batch-delete`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ids: selectedIds })
-                });
-                
-                const data = await res.json();
-                
-                if (data.success) {
-                    hideConfirmModal();
-                    // 重新加载数据
-                    switch (type) {
-                        case 'sms': loadSms(); break;
-                        case 'calls': loadCalls(); break;
-                        case 'logs': loadLogs(); break;
+                        // 定时刷新统计
+                        setInterval(() => App.Modules.Stats.load(), 30000);
                     }
-                    loadStats();
-                } else {
-                    alert('删除失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('删除失败:', error);
-                alert('删除失败: ' + error.message);
-            } finally {
-                btn.textContent = '确认删除';
-                btn.disabled = false;
-            }
-        }
-        
-        // 点击弹窗外部关闭
-        document.getElementById('confirm-modal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('confirm-modal')) {
-                hideConfirmModal();
-            }
-        });
-        
-        // ==================== 辅助函数 ====================
-        
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        function getCallTypeText(type) {
-            const types = {
-                'incoming': '📞 来电',
-                'outgoing': '📱 去电',
-                'missed': '❌ 未接'
-            };
-            return types[type] || type;
-        }
-        
-        function getCallMsgTypeText(msgType) {
-            const types = {
-                601: '📳 来电振铃',
-                602: '✅ 来电接通',
-                603: '📴 对方挂断',
-                620: '📲 去电拨号',
-                621: '📳 对方振铃',
-                622: '✅ 去电接通',
-                623: '📴 去电挂断',
-                641: '🔢 本地按键',
-                642: '🔢 远程按键'
-            };
-            return types[msgType] || `类型${msgType}`;
-        }
-        
-        function formatDuration(seconds) {
-            if (!seconds || seconds === 0) return '-';
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
-        }
-        
-        // ==================== 初始化 ====================
-        
-        // 页面加载时刷新设备状态
-        async function refreshAllDeviceStatus() {
-            console.log('[Init] 刷新所有设备状态...');
-            try {
-                const res = await apiFetch(`${API_BASE}/api/devices/refresh-all`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    console.log(`[Init] ${data.message}`);
-                }
-            } catch (error) {
-                console.error('[Init] 刷新设备状态失败:', error);
-            }
-        }
-        
-        // 初始化：先刷新设备状态，再加载数据
-        (async function init() {
-            const isLoggedIn = checkLogin();
-            if (isLoggedIn) {
-                await refreshAllDeviceStatus();
-                loadStats();
-                loadDevices();
-                loadDevicesForControl();
-            }
-        })();
-        
-        // 定时刷新统计数据
-        setInterval(loadStats, 30000);
-        
-        // ==================== 控制指令功能 ====================
-        
-        // 命令参数定义
-        const CMD_PARAMS = {
-            'stat': { desc: '获取设备当前状态信息', params: [] },
-            'restart': { desc: '重启开发板', params: [] },
-            'now': { 
-                desc: '设置开发板时间',
-                params: [
-                    { name: 'p1', label: '时间', placeholder: 'YYYYMMDDHHmmss (留空自动获取)', type: 'text' },
-                    { name: 'p3', label: '时区', placeholder: '8 (北京时间)', type: 'number', default: '8' }
-                ]
-            },
-            'pingsec': { 
-                desc: '设置Ping消息间隔秒数',
-                params: [
-                    { name: 'p1', label: '间隔秒数', placeholder: '最小10秒', type: 'number', required: true }
-                ]
-            },
-            'dailyrst': { 
-                desc: '设置每日自动重启时间',
-                params: [
-                    { name: 'p1', label: '重启时间(0-23)', placeholder: '4 (凌晨4点)', type: 'number', required: true }
-                ]
-            },
-            'chpwduser': {
-                desc: '修改用户密码',
-                params: [
-                    { name: 'p1', label: '新密码', placeholder: '至少4位', type: 'text', required: true }
-                ]
-            },
-            'slotoff': { 
-                desc: '指定卡槽关机',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
-                ]
-            },
-            'slotrst': { 
-                desc: '指定卡槽重启',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
-                ]
-            },
-            'slotplmn': {
-                desc: '指定卡注册的运营商',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '运营商代码', placeholder: '如: 46001 (0表示自动)', type: 'number', default: '0' }
-                ]
-            },
-            'sendsms': { 
-                desc: '通过指定卡槽发送短信',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '目标号码', placeholder: '手机号码', type: 'text', required: true },
-                    { name: 'p3', label: '短信内容', placeholder: '短信内容', type: 'textarea', required: true },
-                    { name: 'tid', label: '事务ID', placeholder: '用于接收发送结果(可选)', type: 'text' }
-                ]
-            },
-            'querysms': { 
-                desc: '查询本地存储的短信记录',
-                params: [
-                    { name: 'p1', label: '起始位置', placeholder: '从第几条开始 (默认1)', type: 'number', default: '1' },
-                    { name: 'p2', label: '查询条数', placeholder: '查询多少条 (默认10)', type: 'number', default: '10' },
-                    { name: 'p3', label: '关键词', placeholder: '筛选关键词(可选)', type: 'text' }
-                ]
-            },
-            'teldial': { 
-                desc: '使用指定卡槽拨打电话',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '目标号码', placeholder: '手机号码', type: 'text', required: true },
-                    { name: 'p3', label: '通话时长(秒)', placeholder: '默认175秒', type: 'number' },
-                    { name: 'p4', label: 'TTS语音内容', placeholder: '拨通后播放的语音', type: 'textarea' },
-                    { name: 'p5', label: 'TTS播放次数', placeholder: '默认1次', type: 'number' },
-                    { name: 'p7', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
-                ]
-            },
-            'telanswer': { 
-                desc: '接听当前来电',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '通话时长(秒)', placeholder: '默认175秒', type: 'number' },
-                    { name: 'p3', label: 'TTS语音内容', placeholder: '接通后播放的语音', type: 'textarea' },
-                    { name: 'p6', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
-                ]
-            },
-            'telhangup': { 
-                desc: '挂断当前通话',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true }
-                ]
-            },
-            'telstarttts': {
-                desc: '播放TTS语音',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: 'TTS内容', placeholder: '要播放的语音内容', type: 'textarea', required: true },
-                    { name: 'p3', label: '播放次数', placeholder: '0表示无限循环', type: 'number', default: '1' },
-                    { name: 'p4', label: '播放间隔(秒)', placeholder: '默认1秒', type: 'number', default: '1' },
-                    { name: 'p5', label: '播完后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
-                ]
-            },
-            'telstoptts': {
-                desc: '停止播放TTS语音',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '停止后动作', type: 'select', options: [{v:'0',t:'无操作'},{v:'1',t:'挂断'}] }
-                ]
-            },
-            'telkeypress': {
-                desc: '发送DTMF按键',
-                params: [
-                    { name: 'p1', label: '卡槽号', type: 'select', options: [{v:'1',t:'卡槽1'},{v:'2',t:'卡槽2'}], required: true },
-                    { name: 'p2', label: '按键序列', placeholder: '如: 123#', type: 'text', required: true },
-                    { name: 'p3', label: '按键时长(ms)', placeholder: '默认200ms', type: 'number', default: '200' },
-                    { name: 'p4', label: '按键间隔(ms)', placeholder: '默认100ms', type: 'number', default: '100' }
-                ]
-            },
-            'querytel': { 
-                desc: '查询本地存储的通话记录',
-                params: [
-                    { name: 'p1', label: '起始位置', placeholder: '从第几条开始 (默认1)', type: 'number', default: '1' },
-                    { name: 'p2', label: '查询条数', placeholder: '查询多少条 (默认10)', type: 'number', default: '10' }
-                ]
-            },
-            'wf': {
-                desc: '打开或关闭WiFi',
-                params: [
-                    { name: 'p1', label: '动作', type: 'select', options: [{v:'on',t:'打开'},{v:'off',t:'关闭'}], required: true }
-                ]
-            },
-            'addwf': { 
-                desc: '添加可连接的WiFi热点信息',
-                params: [
-                    { name: 'p1', label: 'WiFi名称', placeholder: 'WiFi热点名(2.4G)', type: 'text', required: true },
-                    { name: 'p2', label: 'WiFi密码', placeholder: 'WiFi密码', type: 'text', required: true }
-                ]
-            },
-            'delwf': { 
-                desc: '删除已保存的WiFi热点信息',
-                params: [
-                    { name: 'p1', label: 'WiFi名称', placeholder: '要删除的WiFi热点名', type: 'text', required: true }
-                ]
-            },
-            'dailyota': {
-                desc: '设置每日自动升级时间',
-                params: [
-                    { name: 'p1', label: '升级时间(0-23)', placeholder: '3 (凌晨3点)', type: 'number', required: true }
-                ]
-            },
-            'otanow': {
-                desc: '立即执行OTA升级',
-                params: [
-                    { name: 'tid', label: '事务ID', placeholder: '用于接收结果(可选)', type: 'text' }
-                ]
-            }
-        };
-        
-        // 加载设备列表到控制面板下拉框
-        async function loadDevicesForControl() {
-            try {
-                const res = await apiFetch(`${API_BASE}/api/devices`);
-                const data = await res.json();
-                const select = document.getElementById('ctrl-device');
-                
-                if (data.success && data.data.length > 0) {
-                    data.data.forEach(device => {
-                        const option = document.createElement('option');
-                        option.value = device.dev_id;
-                        option.dataset.ip = device.last_ip || '';
-                        option.textContent = `${device.name || device.dev_id} (${device.last_ip || '未知IP'})`;
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('加载设备列表失败:', error);
-            }
-        }
-        
-        // 设备选择变化时自动填充IP
-        function onDeviceSelect() {
-            const select = document.getElementById('ctrl-device');
-            const selectedOption = select.options[select.selectedIndex];
-            if (selectedOption && selectedOption.dataset.ip) {
-                document.getElementById('ctrl-ip').value = selectedOption.dataset.ip;
-            }
-        }
-        
-        // 命令选择变化时显示参数输入框
-        function onCommandSelect() {
-            const cmd = document.getElementById('ctrl-cmd').value;
-            const paramsContainer = document.getElementById('cmd-params');
-            
-            if (!cmd || !CMD_PARAMS[cmd]) {
-                paramsContainer.innerHTML = '';
-                return;
-            }
-            
-            const cmdInfo = CMD_PARAMS[cmd];
-            let html = `<p style="color:#666;font-size:13px;margin-bottom:15px;">📌 ${cmdInfo.desc}</p>`;
-            
-            if (cmdInfo.params.length > 0) {
-                html += '<div class="param-row">';
-                cmdInfo.params.forEach(param => {
-                    html += `<div class="form-group">`;
-                    html += `<label for="param-${param.name}">${param.label}${param.required ? ' *' : ''}</label>`;
-                    
-                    if (param.type === 'select') {
-                        html += `<select id="param-${param.name}" data-param="${param.name}">`;
-                        html += `<option value="">-- 请选择 --</option>`;
-                        param.options.forEach(opt => {
-                            html += `<option value="${opt.v}">${opt.t}</option>`;
-                        });
-                        html += `</select>`;
-                    } else if (param.type === 'textarea') {
-                        html += `<textarea id="param-${param.name}" data-param="${param.name}" 
-                                  placeholder="${param.placeholder || ''}">${param.default || ''}</textarea>`;
-                    } else {
-                        html += `<input type="${param.type || 'text'}" id="param-${param.name}" 
-                                  data-param="${param.name}" placeholder="${param.placeholder || ''}"
-                                  value="${param.default || ''}">`;
-                    }
-                    
-                    html += `</div>`;
-                });
-                html += '</div>';
-            } else {
-                html += '<p style="color:#888;font-size:13px;">此命令无需额外参数</p>';
-            }
-            
-            paramsContainer.innerHTML = html;
-        }
-        
-        // 发送控制命令
-        async function sendCommand() {
-            const deviceIp = document.getElementById('ctrl-ip').value.trim();
-            const cmd = document.getElementById('ctrl-cmd').value;
-            let token = document.getElementById('ctrl-token').value.trim();
-            
-            // 如果输入框为空，尝试从本地存储获取
-            if (!token) {
-                token = localStorage.getItem(TOKEN_KEY);
-            }
+                },
+                async login() {
+                    const user = document.getElementById('login-user').value;
+                    const pass = document.getElementById('login-pass').value;
+                    if (!user || !pass) return App.UI.toast('请输入用户名和密码', 'error');
 
-            // 如果还是没有Token，尝试使用账号密码计算
-            if (!token) {
-                const devId = document.getElementById('ctrl-device').value;
-                const adminUser = document.getElementById('ctrl-admin-user').value.trim();
-                const adminPass = document.getElementById('ctrl-admin-pass').value.trim();
-                
-                if (devId && adminUser && adminPass) {
-                    const rawString = `${devId}|${adminUser}|${adminPass}`;
-                    const tokenFull = await sha256(rawString);
-                    token = tokenFull.substring(16, 48);
+                    const auth = 'Basic ' + btoa(user + ':' + pass);
+                    
+                    // 验证登录
+                    try {
+                        const res = await fetch(`${App.config.apiBase}/api/stats`, {
+                            headers: { 'Authorization': auth }
+                        });
+                        
+                        if (res.ok) {
+                            localStorage.setItem(App.config.authKey, auth);
+                            App.UI.toast('登录成功', 'success');
+                            setTimeout(() => location.reload(), 500);
+                        } else {
+                            App.UI.toast('用户名或密码错误', 'error');
+                        }
+                    } catch (e) {
+                        App.UI.toast('登录请求失败', 'error');
+                    }
+                },
+                logout() {
+                    localStorage.removeItem(App.config.authKey);
+                    location.reload();
                 }
-            }
-            
-            const resultBox = document.getElementById('ctrl-result');
-            
-            if (!deviceIp) {
-                resultBox.className = 'result-box error';
-                resultBox.textContent = '❌ 错误: 请输入设备IP地址';
-                return;
-            }
-            
-            if (!token) {
-                resultBox.className = 'result-box error';
-                resultBox.textContent = '❌ 错误: 请输入Token或管理员账号密码';
-                return;
-            }
-            
-            if (!cmd) {
-                resultBox.className = 'result-box error';
-                resultBox.textContent = '❌ 错误: 请选择控制命令';
-                return;
-            }
-            
-            // 收集参数
-            const params = {};
-            document.querySelectorAll('#cmd-params [data-param]').forEach(el => {
-                const paramName = el.dataset.param;
-                const value = el.value.trim();
-                if (value) {
-                    params[paramName] = value;
+            },
+
+            // --- UI 工具 ---
+            UI: {
+                switchTab(panelId, tabEl) {
+                    document.querySelectorAll('.page-panel').forEach(el => el.classList.remove('active'));
+                    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                    document.getElementById('panel-' + panelId).classList.add('active');
+                    tabEl.classList.add('active');
+                    
+                    // 懒加载数据
+                    if(panelId === 'sms') App.Modules.SMS.load();
+                    if(panelId === 'calls') App.Modules.Calls.load();
+                    if(panelId === 'logs') App.Modules.Logs.load();
+                },
+                showModal(id) {
+                    document.getElementById(id).classList.add('active');
+                },
+                hideModal(id) {
+                    document.getElementById(id).classList.remove('active');
+                },
+                toast(msg, type = 'info') {
+                    const container = document.getElementById('toast-container');
+                    const el = document.createElement('div');
+                    el.className = `toast ${type}`;
+                    
+                    let iconName = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
+                    
+                    el.innerHTML = `
+                        <i data-lucide="${iconName}" class="toast-icon" size="20"></i>
+                        <span>${msg}</span>
+                    `;
+                    container.appendChild(el);
+                    lucide.createIcons({ root: el });
+                    
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateY(-20px)';
+                        setTimeout(() => el.remove(), 300);
+                    }, 3000);
                 }
-            });
-            
-            resultBox.className = 'result-box';
-            resultBox.textContent = '⏳ 正在发送命令...';
-            
-            try {
-                const response = await apiFetch(`${API_BASE}/api/control/send`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+            },
+
+            // --- 业务模块 ---
+            Modules: {
+                Stats: {
+                    async load() {
+                        try {
+                            const data = await App.Utils.apiFetch('/api/stats');
+                            if (data.success) {
+                                document.getElementById('stat-devices').textContent = data.data.devices.total;
+                                document.getElementById('stat-online-badge').textContent = `${data.data.devices.online} 在线`;
+                                document.getElementById('stat-offline-badge').textContent = `${data.data.devices.offline} 离线`;
+                                document.getElementById('stat-sms-today').textContent = data.data.sms.today;
+                                document.getElementById('stat-sms-total').textContent = data.data.sms.total;
+                                document.getElementById('stat-calls-today').textContent = data.data.calls.today;
+                                document.getElementById('stat-calls-total').textContent = data.data.calls.total;
+                            }
+                        } catch (e) {
+                            console.error('加载统计失败', e);
+                        }
+                    }
+                },
+                Devices: {
+                    async load() {
+                        const tbody = document.querySelector('#table-devices tbody');
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        
+                        try {
+                            const data = await App.Utils.apiFetch('/api/devices');
+                            if (data.success && data.data.length > 0) {
+                                tbody.innerHTML = data.data.map(d => `
+                                    <tr>
+                                        <td data-label="设备ID"><span class="device-id" style="font-weight:600;">${d.dev_id}</span></td>
+                                        <td data-label="名称">${d.name || '-'}</td>
+                                        <td data-label="状态">
+                                            <span class="badge ${d.status === 'online' ? 'badge-success' : 'badge-danger'}">
+                                                ${d.status === 'online' ? '在线' : '离线'}
+                                            </span>
+                                        </td>
+                                        <td data-label="网络">${d.last_ip || '-'}</td>
+                                        <td data-label="SIM卡">${App.Utils.formatSimInfo(d.sim_cards)}</td>
+                                        <td data-label="最后在线" style="color:var(--text-secondary); font-size:12px;">${App.Utils.formatTime(d.last_seen_at)}</td>
+                                    </tr>
+                                `).join('');
+                            } else {
+                                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#888;">暂无设备数据</td></tr>';
+                            }
+                        } catch (e) {
+                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                        }
                     },
-                    body: JSON.stringify({
-                        deviceIp,
-                        token,
-                        cmd,
-                        params
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    resultBox.className = 'result-box success';
-                    resultBox.textContent = `✅ 命令执行成功\n\n` +
-                        `📡 请求URL:\n${data.command?.url || '无'}\n\n` +
-                        `📥 设备响应:\n${JSON.stringify(data.data, null, 2)}`;
-                } else {
-                    resultBox.className = 'result-box error';
-                    resultBox.textContent = `❌ 命令执行失败\n\n错误信息: ${data.error}`;
+                    async refresh() {
+                        App.UI.toast('正在刷新设备状态...', 'info');
+                        try {
+                            await App.Utils.apiFetch('/api/devices/refresh-all', { method: 'POST' });
+                            this.load();
+                            App.Modules.Stats.load();
+                        } catch (e) {
+                            App.UI.toast('刷新失败', 'error');
+                        }
+                    },
+                    async add() {
+                        const devId = document.getElementById('add-dev-id').value.trim();
+                        const name = document.getElementById('add-dev-name').value.trim();
+                        const ip = document.getElementById('add-dev-ip').value.trim();
+                        
+                        if (!devId) return App.UI.toast('请输入设备ID', 'warning');
+                        
+                        try {
+                            const res = await App.Utils.apiFetch('/api/devices', {
+                                method: 'POST',
+                                body: JSON.stringify({ devId, name, ip })
+                            });
+                            if (res.success) {
+                                App.UI.toast('设备添加成功', 'success');
+                                App.UI.hideModal('modal-add-device');
+                                this.load();
+                                App.Modules.Control.loadDevices();
+                            } else {
+                                App.UI.toast(res.error || '添加失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('添加失败: ' + e.message, 'error');
+                        }
+                    }
+                },
+                SMS: {
+                    async load() {
+                        const tbody = document.querySelector('#table-sms tbody');
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        
+                        const phoneNum = document.getElementById('sms-search').value;
+                        const direction = document.getElementById('sms-direction').value;
+                        
+                        let url = '/api/sms?limit=100';
+                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                        if (direction) url += `&direction=${direction}`;
+                        
+                        try {
+                            const data = await App.Utils.apiFetch(url);
+                            if (data.success && data.data.length > 0) {
+                                tbody.innerHTML = data.data.map(sms => `
+                                    <tr>
+                                        <td data-label="设备">${sms.dev_id}</td>
+                                        <td data-label="卡槽"><span class="badge badge-neutral">卡${sms.slot || '?'}</span></td>
+                                        <td data-label="方向"><span class="badge ${sms.direction === 'in' ? 'badge-info' : 'badge-success'}">${sms.direction === 'in' ? '接收' : '发送'}</span></td>
+                                        <td data-label="号码">${sms.phone_num}</td>
+                                        <td data-label="内容"><div class="sms-content">${App.Utils.escapeHtml(sms.content)}</div></td>
+                                        <td data-label="时间">${App.Utils.formatTime(sms.sms_time || sms.created_at)}</td>
+                                    </tr>
+                                `).join('');
+                            } else {
+                                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#888;">暂无短信记录</td></tr>';
+                            }
+                        } catch (e) {
+                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                        }
+                    }
+                },
+                Calls: {
+                    async load() {
+                        const tbody = document.querySelector('#table-calls tbody');
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        
+                        const phoneNum = document.getElementById('call-search').value;
+                        const callType = document.getElementById('call-type').value;
+                        
+                        let url = '/api/calls?limit=100';
+                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                        if (callType) url += `&callType=${callType}`;
+                        
+                        try {
+                            const data = await App.Utils.apiFetch(url);
+                            if (data.success && data.data.length > 0) {
+                                tbody.innerHTML = data.data.map(call => `
+                                    <tr>
+                                        <td data-label="设备">${call.dev_id}</td>
+                                        <td data-label="卡槽"><span class="badge badge-neutral">卡${call.slot || '?'}</span></td>
+                                        <td data-label="消息类型">${App.Utils.getCallMsgTypeText(call.msg_type)}</td>
+                                        <td data-label="通话分类">${App.Utils.getCallTypeText(call.call_type)}</td>
+                                        <td data-label="对方号码">${call.phone_num}</td>
+                                        <td data-label="时间">${App.Utils.formatTime(call.start_time)}</td>
+                                        <td data-label="时长">${App.Utils.formatDuration(call.duration)}</td>
+                                    </tr>
+                                `).join('');
+                            } else {
+                                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">暂无通话记录</td></tr>';
+                            }
+                        } catch (e) {
+                            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                        }
+                    }
+                },
+                Logs: {
+                    async load() {
+                        const tbody = document.querySelector('#table-logs tbody');
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        
+                        const msgType = document.getElementById('log-msg-type').value;
+                        let url = '/api/messages?limit=100';
+                        if (msgType) {
+                            if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
+                            else url += `&msgType=${msgType}`;
+                        }
+                        
+                        try {
+                            const data = await App.Utils.apiFetch(url);
+                            if (data.success && data.data.length > 0) {
+                                tbody.innerHTML = data.data.map(log => {
+                                    let slot = '-';
+                                    try {
+                                        if (log.raw_data) {
+                                            const raw = JSON.parse(log.raw_data);
+                                            if (raw.slot) slot = '卡' + raw.slot;
+                                            else if (raw.slotInfo) slot = '多卡信息';
+                                        }
+                                    } catch(e) {}
+                                    
+                                    return `
+                                    <tr>
+                                        <td data-label="设备">${log.dev_id}</td>
+                                        <td data-label="卡槽"><span class="badge badge-neutral">${slot}</span></td>
+                                        <td data-label="消息类型">${log.type}</td>
+                                        <td data-label="类型名称">${log.type_name}</td>
+                                        <td data-label="时间">${App.Utils.formatTime(log.created_at)}</td>
+                                    </tr>
+                                `}).join('');
+                            } else {
+                                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:#888;">暂无消息日志</td></tr>';
+                            }
+                        } catch (e) {
+                            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                        }
+                    }
+                },
+                Control: {
+                    init() {
+                        this.loadDevices();
+                        this.renderCmdOptions();
+                    },
+                    async loadDevices() {
+                        try {
+                            const data = await App.Utils.apiFetch('/api/devices');
+                            const select = document.getElementById('ctrl-device-select');
+                            select.innerHTML = '';
+                            
+                            if (data.success && data.data.length > 0) {
+                                data.data.forEach(device => {
+                                    const option = document.createElement('option');
+                                    option.value = device.dev_id;
+                                    option.dataset.ip = device.last_ip || '';
+                                    option.textContent = `${device.name || device.dev_id} (${device.last_ip || '未知IP'})`;
+                                    select.appendChild(option);
+                                });
+                                this.onDeviceSelect();
+                            }
+                        } catch (e) {
+                            console.error('加载设备列表失败', e);
+                        }
+                    },
+                    renderCmdOptions() {
+                        const select = document.getElementById('ctrl-cmd-select');
+                        select.innerHTML = '<option value="">-- 请选择 --</option>';
+                        for (const [key, val] of Object.entries(App.CMD_PARAMS)) {
+                            const option = document.createElement('option');
+                            option.value = key;
+                            option.textContent = `${val.desc} (${key})`;
+                            select.appendChild(option);
+                        }
+                    },
+                    onDeviceSelect() {
+                        const select = document.getElementById('ctrl-device-select');
+                        const selectedOption = select.options[select.selectedIndex];
+                        if (selectedOption) {
+                            document.getElementById('ctrl-device-ip').value = selectedOption.dataset.ip || '';
+                        }
+                    },
+                    onCmdSelect() {
+                        const cmd = document.getElementById('ctrl-cmd-select').value;
+                        const container = document.getElementById('ctrl-params-container');
+                        container.innerHTML = '';
+                        
+                        if (!cmd || !App.CMD_PARAMS[cmd]) return;
+                        
+                        const cmdInfo = App.CMD_PARAMS[cmd];
+                        
+                        if (cmdInfo.params.length > 0) {
+                            let html = '<div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">';
+                            cmdInfo.params.forEach(param => {
+                                html += `<div class="form-group" style="display:flex; flex-direction:column; gap:5px;">`;
+                                html += `<label style="font-size:13px; color:var(--text-secondary);">${param.label}${param.required ? ' *' : ''}</label>`;
+                                
+                                if (param.type === 'select') {
+                                    html += `<select class="form-control" data-param="${param.name}">`;
+                                    param.options.forEach(opt => {
+                                        html += `<option value="${opt.v}">${opt.t}</option>`;
+                                    });
+                                    html += `</select>`;
+                                } else if (param.type === 'textarea') {
+                                    html += `<textarea class="form-control" data-param="${param.name}" placeholder="${param.placeholder || ''}" rows="3">${param.default || ''}</textarea>`;
+                                } else {
+                                    html += `<input type="${param.type || 'text'}" class="form-control" data-param="${param.name}" placeholder="${param.placeholder || ''}" value="${param.default || ''}">`;
+                                }
+                                html += `</div>`;
+                            });
+                            html += '</div>';
+                            container.innerHTML = html;
+                        } else {
+                            container.innerHTML = `<div style="color:var(--text-secondary); font-size:13px;">此指令无额外参数</div>`;
+                        }
+                    },
+                    async send() {
+                        const deviceIp = document.getElementById('ctrl-device-ip').value.trim();
+                        const cmd = document.getElementById('ctrl-cmd-select').value;
+                        const devId = document.getElementById('ctrl-device-select').value;
+                        const user = document.getElementById('ctrl-board-user').value.trim();
+                        const pass = document.getElementById('ctrl-board-pass').value.trim();
+                        
+                        if (!deviceIp) return App.UI.toast('请输入设备IP', 'error');
+                        if (!cmd) return App.UI.toast('请选择指令', 'warning');
+                        if (!user || !pass) return App.UI.toast('请输入开发板账号和密码', 'warning');
+                        
+                        // 自动计算 Token
+                        const raw = `${devId}|${user}|${pass}`;
+                        const msgBuffer = new TextEncoder().encode(raw);
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+                        const token = hashHex.substring(16, 48);
+                        
+                        const params = {};
+                        document.querySelectorAll('#ctrl-params-container [data-param]').forEach(el => {
+                            const val = el.value.trim();
+                            if (val) params[el.dataset.param] = val;
+                        });
+                        
+                        const resultBox = document.getElementById('ctrl-result');
+                        resultBox.className = 'result-box';
+                        resultBox.textContent = `[${new Date().toLocaleTimeString()}] 正在发送 ${cmd} 指令...`;
+                        
+                        try {
+                            const res = await App.Utils.apiFetch('/api/control/send', {
+                                method: 'POST',
+                                body: JSON.stringify({ deviceIp, token, cmd, params })
+                            });
+                            
+                            if (res.success) {
+                                resultBox.className = 'result-box success'; // Note: style needs to be defined or inline
+                                resultBox.style.color = '#a7f3d0';
+                                resultBox.textContent = `✅ 命令执行成功\n\n` +
+                                    `📡 请求URL:\n${res.command?.url || '无'}\n\n` +
+                                    `📥 设备响应:\n${JSON.stringify(res.data, null, 2)}`;
+                                App.UI.toast('指令发送成功', 'success');
+                            } else {
+                                throw new Error(res.error || '未知错误');
+                            }
+                        } catch (e) {
+                            resultBox.className = 'result-box error'; // Note: style needs to be defined or inline
+                            resultBox.style.color = '#fecaca';
+                            resultBox.textContent = `❌ 执行失败: ${e.message}`;
+                            App.UI.toast('指令发送失败', 'error');
+                        }
+                    }
                 }
-            } catch (error) {
-                resultBox.className = 'result-box error';
-                resultBox.textContent = `❌ 请求失败\n\n错误信息: ${error.message}`;
-            }
-        }
-        
-        // 清空结果
-        function clearResult() {
-            const resultBox = document.getElementById('ctrl-result');
-            resultBox.className = 'result-box';
-            resultBox.textContent = '等待发送命令...';
-        }
-        
-        // ==================== Token 计算功能 ====================
-        
-        /**
-         * SHA256 哈希计算
-         * @param {string} message - 要哈希的字符串
-         * @returns {Promise<string>} - 32位大写十六进制字符串
-         */
-        async function sha256(message) {
-            // 将字符串编码为 UTF-8 字节数组
-            const msgBuffer = new TextEncoder().encode(message);
-            // 使用 Web Crypto API 计算 SHA-256
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            // 转换为十六进制字符串
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            // 返回完整 SHA-256 (64位十六进制字符串)
-            return hashHex.toUpperCase();
-        }
-        
-        /**
-         * 计算 Token
-         * 规则: SHA256(设备ID|管理员账号|管理员密码)
-         */
-        async function calculateToken() {
-            const devId = document.getElementById('calc-dev-id').value.trim();
-            const adminUser = document.getElementById('calc-admin-user').value.trim();
-            const adminPass = document.getElementById('calc-admin-pass').value.trim();
-            const resultSpan = document.getElementById('calc-token-result');
+            },
             
-            if (!devId) {
-                resultSpan.style.color = '#dc2626';
-                resultSpan.textContent = '❌ 请输入设备ID';
-                return null;
-            }
-            if (!adminUser) {
-                resultSpan.style.color = '#dc2626';
-                resultSpan.textContent = '❌ 请输入管理员账号';
-                return null;
-            }
-            if (!adminPass) {
-                resultSpan.style.color = '#dc2626';
-                resultSpan.textContent = '❌ 请输入管理员密码';
-                return null;
-            }
-            
-            try {
-                // 拼接字符串: 设备ID|管理员账号|管理员密码
-                const rawString = `${devId}|${adminUser}|${adminPass}`;
-                // 计算 SHA256 并取32位大写
-                const tokenFull = await sha256(rawString);
-                const token = tokenFull.substring(16, 48);
-                
-                resultSpan.style.color = '#059669';
-                resultSpan.textContent = `✅ ${token}`;
-                
-                return token;
-            } catch (error) {
-                resultSpan.style.color = '#dc2626';
-                resultSpan.textContent = `❌ 计算失败: ${error.message}`;
-                return null;
-            }
-        }
-        
-        /**
-         * 将计算的 Token 填入输入框
-         */
-        async function fillTokenToInput() {
-            const token = await calculateToken();
-            if (token) {
-                document.getElementById('ctrl-token').value = token;
-                // 保存到本地存储
-                localStorage.setItem(TOKEN_KEY, token);
-            }
-        }
-        
-        // 当选择设备时，自动填充设备ID到计算器
-        const originalOnDeviceSelect = onDeviceSelect;
-        onDeviceSelect = function() {
-            originalOnDeviceSelect();
-            const select = document.getElementById('ctrl-device');
-            const devId = select.value;
-            if (devId) {
-                document.getElementById('calc-dev-id').value = devId;
+            // --- 辅助函数 ---
+            Utils: {
+                async apiFetch(url, options = {}) {
+                    const token = localStorage.getItem(App.config.authKey);
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    };
+                    if (token) headers['Authorization'] = token;
+                    
+                    const res = await fetch(App.config.apiBase + url, { ...options, headers });
+                    if (res.status === 401) {
+                        App.Auth.logout();
+                        throw new Error('未授权');
+                    }
+                    return res.json();
+                },
+                formatTime(timeStr) {
+                    if (!timeStr) return '-';
+                    // 如果是时间戳（纯数字）
+                    if (/^\d+$/.test(timeStr)) {
+                        try {
+                            // 假设是UTC时间戳，+8小时转北京时间
+                            const ts = parseInt(timeStr) * 1000;
+                            const date = new Date(ts + 8 * 3600 * 1000);
+                            const pad = n => n < 10 ? '0' + n : n;
+                            return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+                        } catch (e) { return timeStr; }
+                    }
+                    // 如果是ISO字符串，尝试转换
+                    try {
+                        const date = new Date(timeStr);
+                        // 简单处理，直接显示本地时间（假设浏览器在中国）
+                        // 或者手动处理时区
+                        return date.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+                    } catch (e) { return timeStr; }
+                },
+                formatSimInfo(simCards) {
+                    if (!simCards || simCards.length === 0) return '-';
+                    return simCards.map(sim => {
+                        const statusClass = sim.status === 'ready' ? 'badge-success' : 'badge-danger';
+                        return `<span class="badge ${statusClass}" style="margin-right:5px;">卡${sim.slot}: ${sim.msisdn || '未知'}</span>`;
+                    }).join('');
+                },
+                escapeHtml(text) {
+                    if (!text) return '';
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                },
+                getCallTypeText(type) {
+                    const map = { 'incoming': '📞 来电', 'outgoing': '📱 去电', 'missed': '❌ 未接' };
+                    return map[type] || type;
+                },
+                getCallMsgTypeText(type) {
+                    const map = {
+                        601: '📳 来电振铃', 602: '✅ 来电接通', 603: '📴 对方挂断',
+                        620: '📲 去电拨号', 621: '📳 对方振铃', 622: '✅ 去电接通', 623: '📴 去电挂断'
+                    };
+                    return map[type] || type;
+                },
+                formatDuration(seconds) {
+                    if (!seconds) return '-';
+                    const m = Math.floor(seconds / 60);
+                    const s = seconds % 60;
+                    return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+                }
             }
         };
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', App.Auth.init);
+
     </script>
 </body>
 </html>
