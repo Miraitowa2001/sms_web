@@ -102,7 +102,12 @@ function basicAuth(req, res, next) {
     }
     
     // 获取Authorization头
-    const authHeader = req.headers.authorization;
+    let authHeader = req.headers.authorization;
+
+    // 如果Header中没有，尝试从Query参数获取 (用于文件下载等无法设置Header的场景)
+    if (!authHeader && req.query._auth) {
+        authHeader = req.query._auth;
+    }
     
     if (!authHeader || !authHeader.startsWith('Basic ')) {
         // 不设置 WWW-Authenticate 头，避免浏览器弹出原生认证框

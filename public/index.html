@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📨</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#4f46e5">
@@ -478,7 +479,13 @@
             <div class="card">
                 <div class="card-header">
                     <h2><i data-lucide="message-square" size="20"></i> 短信记录</h2>
-                    <div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-danger" onclick="App.Modules.SMS.deleteBatch()">
+                            <i data-lucide="trash-2" size="16"></i> 删除
+                        </button>
+                        <button class="btn btn-success" onclick="App.Modules.SMS.export()">
+                            <i data-lucide="download" size="16"></i> 导出
+                        </button>
                         <button class="btn btn-secondary" onclick="App.Modules.SMS.load()">
                             <i data-lucide="refresh-cw" size="16"></i> 刷新
                         </button>
@@ -487,17 +494,25 @@
                 <div class="card-body">
                     <div class="search-box">
                         <input type="text" class="form-control" id="sms-search" placeholder="搜索号码..." style="flex:1;">
+                        <select class="form-control" id="sms-slot" style="width: 100px;">
+                            <option value="">全部卡槽</option>
+                            <option value="1">卡槽1</option>
+                            <option value="2">卡槽2</option>
+                        </select>
                         <select class="form-control" id="sms-direction" style="width: 120px;">
                             <option value="">全部方向</option>
                             <option value="in">接收</option>
                             <option value="out">发送</option>
                         </select>
+                        <input type="date" class="form-control" id="sms-date-start" style="width: 140px;">
+                        <input type="date" class="form-control" id="sms-date-end" style="width: 140px;">
                         <button class="btn btn-primary" onclick="App.Modules.SMS.load()">搜索</button>
                     </div>
                     <div class="table-container">
                         <table id="table-sms">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;"><input type="checkbox" onchange="App.UI.toggleSelectAll(this, '#table-sms')"></th>
                                     <th>设备</th>
                                     <th>卡槽</th>
                                     <th>方向</th>
@@ -518,7 +533,13 @@
             <div class="card">
                 <div class="card-header">
                     <h2><i data-lucide="phone" size="20"></i> 通话记录</h2>
-                    <div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-danger" onclick="App.Modules.Calls.deleteBatch()">
+                            <i data-lucide="trash-2" size="16"></i> 删除
+                        </button>
+                        <button class="btn btn-success" onclick="App.Modules.Calls.export()">
+                            <i data-lucide="download" size="16"></i> 导出
+                        </button>
                         <button class="btn btn-secondary" onclick="App.Modules.Calls.load()">
                             <i data-lucide="refresh-cw" size="16"></i> 刷新
                         </button>
@@ -527,18 +548,26 @@
                 <div class="card-body">
                     <div class="search-box">
                         <input type="text" class="form-control" id="call-search" placeholder="搜索号码..." style="flex:1;">
+                        <select class="form-control" id="call-slot" style="width: 100px;">
+                            <option value="">全部卡槽</option>
+                            <option value="1">卡槽1</option>
+                            <option value="2">卡槽2</option>
+                        </select>
                         <select class="form-control" id="call-type" style="width: 120px;">
                             <option value="">全部类型</option>
                             <option value="incoming">来电</option>
                             <option value="outgoing">去电</option>
                             <option value="missed">未接</option>
                         </select>
+                        <input type="date" class="form-control" id="call-date-start" style="width: 140px;">
+                        <input type="date" class="form-control" id="call-date-end" style="width: 140px;">
                         <button class="btn btn-primary" onclick="App.Modules.Calls.load()">搜索</button>
                     </div>
                     <div class="table-container">
                         <table id="table-calls">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;"><input type="checkbox" onchange="App.UI.toggleSelectAll(this, '#table-calls')"></th>
                                     <th>设备</th>
                                     <th>卡槽</th>
                                     <th>消息类型</th>
@@ -560,7 +589,13 @@
             <div class="card">
                 <div class="card-header">
                     <h2><i data-lucide="file-text" size="20"></i> 消息日志</h2>
-                    <div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-danger" onclick="App.Modules.Logs.deleteBatch()">
+                            <i data-lucide="trash-2" size="16"></i> 删除
+                        </button>
+                        <button class="btn btn-success" onclick="App.Modules.Logs.export()">
+                            <i data-lucide="download" size="16"></i> 导出
+                        </button>
                         <button class="btn btn-secondary" onclick="App.Modules.Logs.load()">
                             <i data-lucide="refresh-cw" size="16"></i> 刷新
                         </button>
@@ -580,12 +615,15 @@
                                 <option value="module">通讯模组 (301)</option>
                             </optgroup>
                         </select>
+                        <input type="date" class="form-control" id="log-date-start" style="width: 140px;">
+                        <input type="date" class="form-control" id="log-date-end" style="width: 140px;">
                         <button class="btn btn-primary" onclick="App.Modules.Logs.load()">搜索</button>
                     </div>
                     <div class="table-container">
                         <table id="table-logs">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;"><input type="checkbox" onchange="App.UI.toggleSelectAll(this, '#table-logs')"></th>
                                     <th>设备</th>
                                     <th>卡槽</th>
                                     <th>消息类型</th>
@@ -924,6 +962,14 @@
                     if(panelId === 'calls') App.Modules.Calls.load();
                     if(panelId === 'logs') App.Modules.Logs.load();
                 },
+                toggleSelectAll(source, tableId) {
+                    const checkboxes = document.querySelectorAll(`${tableId} tbody input[type="checkbox"]`);
+                    checkboxes.forEach(cb => cb.checked = source.checked);
+                },
+                getSelectedIds(tableId) {
+                    const checkboxes = document.querySelectorAll(`${tableId} tbody input[type="checkbox"]:checked`);
+                    return Array.from(checkboxes).map(cb => cb.value);
+                },
                 showModal(id) {
                     document.getElementById(id).classList.add('active');
                 },
@@ -1039,20 +1085,27 @@
                 SMS: {
                     async load() {
                         const tbody = document.querySelector('#table-sms tbody');
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">加载中...</td></tr>';
                         
                         const phoneNum = document.getElementById('sms-search').value;
                         const direction = document.getElementById('sms-direction').value;
+                        const slot = document.getElementById('sms-slot').value;
+                        const dateStart = document.getElementById('sms-date-start').value;
+                        const dateEnd = document.getElementById('sms-date-end').value;
                         
                         let url = '/api/sms?limit=100';
                         if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                         if (direction) url += `&direction=${direction}`;
+                        if (slot) url += `&slot=${slot}`;
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
                             if (data.success && data.data.length > 0) {
                                 tbody.innerHTML = data.data.map(sms => `
                                     <tr>
+                                        <td><input type="checkbox" value="${sms.id}"></td>
                                         <td data-label="设备">${sms.dev_id}</td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${sms.slot || '?'}</span></td>
                                         <td data-label="方向"><span class="badge ${sms.direction === 'in' ? 'badge-info' : 'badge-success'}">${sms.direction === 'in' ? '接收' : '发送'}</span></td>
@@ -1062,30 +1115,77 @@
                                     </tr>
                                 `).join('');
                             } else {
-                                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#888;">暂无短信记录</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">暂无短信记录</td></tr>';
                             }
                         } catch (e) {
-                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
                         }
+                    },
+                    async deleteBatch() {
+                        const ids = App.UI.getSelectedIds('#table-sms');
+                        if (ids.length === 0) return App.UI.toast('请先选择要删除的记录', 'warning');
+                        
+                        if (!confirm(`确定要删除选中的 ${ids.length} 条记录吗？`)) return;
+                        
+                        try {
+                            const res = await App.Utils.apiFetch('/api/sms/batch-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ ids })
+                            });
+                            if (res.success) {
+                                App.UI.toast('删除成功', 'success');
+                                this.load();
+                            } else {
+                                App.UI.toast('删除失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败', 'error');
+                        }
+                    },
+                    export() {
+                        const phoneNum = document.getElementById('sms-search').value;
+                        const direction = document.getElementById('sms-direction').value;
+                        const slot = document.getElementById('sms-slot').value;
+                        const dateStart = document.getElementById('sms-date-start').value;
+                        const dateEnd = document.getElementById('sms-date-end').value;
+                        
+                        let url = '/api/sms?export=csv';
+                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                        if (direction) url += `&direction=${direction}`;
+                        if (slot) url += `&slot=${slot}`;
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        
+                        const token = localStorage.getItem(App.config.authKey);
+                        if (token) url += `&_auth=${encodeURIComponent(token)}`;
+                        
+                        window.open(App.config.apiBase + url, '_blank');
                     }
                 },
                 Calls: {
                     async load() {
                         const tbody = document.querySelector('#table-calls tbody');
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">加载中...</td></tr>';
                         
                         const phoneNum = document.getElementById('call-search').value;
                         const callType = document.getElementById('call-type').value;
+                        const slot = document.getElementById('call-slot').value;
+                        const dateStart = document.getElementById('call-date-start').value;
+                        const dateEnd = document.getElementById('call-date-end').value;
                         
                         let url = '/api/calls?limit=100';
                         if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                         if (callType) url += `&callType=${callType}`;
+                        if (slot) url += `&slot=${slot}`;
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
                             if (data.success && data.data.length > 0) {
                                 tbody.innerHTML = data.data.map(call => `
                                     <tr>
+                                        <td><input type="checkbox" value="${call.id}"></td>
                                         <td data-label="设备">${call.dev_id}</td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${call.slot || '?'}</span></td>
                                         <td data-label="消息类型">${App.Utils.getCallMsgTypeText(call.msg_type)}</td>
@@ -1096,24 +1196,69 @@
                                     </tr>
                                 `).join('');
                             } else {
-                                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">暂无通话记录</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">暂无通话记录</td></tr>';
                             }
                         } catch (e) {
-                            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
                         }
+                    },
+                    async deleteBatch() {
+                        const ids = App.UI.getSelectedIds('#table-calls');
+                        if (ids.length === 0) return App.UI.toast('请先选择要删除的记录', 'warning');
+                        
+                        if (!confirm(`确定要删除选中的 ${ids.length} 条记录吗？`)) return;
+                        
+                        try {
+                            const res = await App.Utils.apiFetch('/api/calls/batch-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ ids })
+                            });
+                            if (res.success) {
+                                App.UI.toast('删除成功', 'success');
+                                this.load();
+                            } else {
+                                App.UI.toast('删除失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败', 'error');
+                        }
+                    },
+                    export() {
+                        const phoneNum = document.getElementById('call-search').value;
+                        const callType = document.getElementById('call-type').value;
+                        const slot = document.getElementById('call-slot').value;
+                        const dateStart = document.getElementById('call-date-start').value;
+                        const dateEnd = document.getElementById('call-date-end').value;
+                        
+                        let url = '/api/calls?export=csv';
+                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                        if (callType) url += `&callType=${callType}`;
+                        if (slot) url += `&slot=${slot}`;
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        
+                        const token = localStorage.getItem(App.config.authKey);
+                        if (token) url += `&_auth=${encodeURIComponent(token)}`;
+                        
+                        window.open(App.config.apiBase + url, '_blank');
                     }
                 },
                 Logs: {
                     async load() {
                         const tbody = document.querySelector('#table-logs tbody');
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">加载中...</td></tr>';
                         
                         const msgType = document.getElementById('log-msg-type').value;
+                        const dateStart = document.getElementById('log-date-start').value;
+                        const dateEnd = document.getElementById('log-date-end').value;
+                        
                         let url = '/api/messages?limit=100';
                         if (msgType) {
                             if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
                             else url += `&msgType=${msgType}`;
                         }
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
@@ -1130,6 +1275,7 @@
                                     
                                     return `
                                     <tr>
+                                        <td><input type="checkbox" value="${log.id}"></td>
                                         <td data-label="设备">${log.dev_id}</td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">${slot}</span></td>
                                         <td data-label="消息类型">${log.type}</td>
@@ -1138,11 +1284,50 @@
                                     </tr>
                                 `}).join('');
                             } else {
-                                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:#888;">暂无消息日志</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#888;">暂无消息日志</td></tr>';
                             }
                         } catch (e) {
-                            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
                         }
+                    },
+                    async deleteBatch() {
+                        const ids = App.UI.getSelectedIds('#table-logs');
+                        if (ids.length === 0) return App.UI.toast('请先选择要删除的记录', 'warning');
+                        
+                        if (!confirm(`确定要删除选中的 ${ids.length} 条记录吗？`)) return;
+                        
+                        try {
+                            const res = await App.Utils.apiFetch('/api/messages/batch-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ ids })
+                            });
+                            if (res.success) {
+                                App.UI.toast('删除成功', 'success');
+                                this.load();
+                            } else {
+                                App.UI.toast('删除失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败', 'error');
+                        }
+                    },
+                    export() {
+                        const msgType = document.getElementById('log-msg-type').value;
+                        const dateStart = document.getElementById('log-date-start').value;
+                        const dateEnd = document.getElementById('log-date-end').value;
+                        
+                        let url = '/api/messages?export=csv';
+                        if (msgType) {
+                            if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
+                            else url += `&msgType=${msgType}`;
+                        }
+                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
+                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        
+                        const token = localStorage.getItem(App.config.authKey);
+                        if (token) url += `&_auth=${encodeURIComponent(token)}`;
+                        
+                        window.open(App.config.apiBase + url, '_blank');
                     }
                 },
                 Control: {

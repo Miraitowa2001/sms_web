@@ -983,7 +983,7 @@ router.post('/sms/batch-delete', (req, res) => {
             deleted: result.changes
         });
     } catch (error) {
-        console.error('[API] 批量删除短信失败:', error);
+        console.error('[API] 批量删除短信记录失败:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -994,7 +994,7 @@ router.post('/sms/batch-delete', (req, res) => {
  */
 router.get('/sms', (req, res) => {
     try {
-        const { devId, phoneNum, direction, dateStart, dateEnd, page = 1, limit = 50 } = req.query;
+        const { devId, phoneNum, direction, dateStart, dateEnd, page = 1, limit = 50, export: exportType } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM sms_records WHERE 1=1';
@@ -1016,6 +1016,11 @@ router.get('/sms', (req, res) => {
             countSql += ' AND direction = ?';
             params.push(direction);
         }
+        if (req.query.slot) {
+            sql += ' AND slot = ?';
+            countSql += ' AND slot = ?';
+            params.push(req.query.slot);
+        }
         if (dateStart) {
             sql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
             countSql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
@@ -1027,10 +1032,37 @@ router.get('/sms', (req, res) => {
             params.push(dateEnd);
         }
         
-        sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        sql += ' ORDER BY created_at DESC';
         
-        const records = db.prepare(sql).all(...params, parseInt(limit), parseInt(offset));
-        const { total } = db.prepare(countSql).get(...params);
+        // 如果不是导出，则添加分页
+        if (exportType !== 'csv') {
+            sql += ' LIMIT ? OFFSET ?';
+            params.push(parseInt(limit), parseInt(offset));
+        }
+        
+        const records = db.prepare(sql).all(...params);
+        
+        if (exportType === 'csv') {
+            const headers = ['ID', '设备ID', '卡槽', '方向', '号码', '内容', '时间'];
+            const csvContent = [
+                headers.join(','),
+                ...records.map(r => [
+                    r.id,
+                    r.dev_id,
+                    r.slot,
+                    r.direction === 'in' ? '接收' : '发送',
+                    r.phone_num,
+                    `"${(r.content || '').replace(/"/g, '""')}"`,
+                    r.sms_time || r.created_at
+                ].join(','))
+            ].join('\n');
+            
+            res.header('Content-Type', 'text/csv');
+            res.header('Content-Disposition', `attachment; filename="sms_export_${new Date().getTime()}.csv"`);
+            return res.send('\uFEFF' + csvContent); // 添加BOM以支持Excel中文
+        }
+        
+        const { total } = db.prepare(countSql).get(...params.slice(0, params.length - 2)); // 去掉limit和offset参数
         
         res.json({
             success: true,
@@ -1060,7 +1092,7 @@ router.get('/sms/latest-text', (req, res) => {
             // 如果是时间戳（纯数字），转换为可读格式
             if (timeStr && /^\d+$/.test(timeStr)) {
                 try {
-                    // 假设服务器是UTC时间，或者时间戳是UTC时间戳
+                    // 假设服务器是UTC时间，或者时间戳是UTC时间
                     // 用户要求+8小时才是北京时间，说明当前输出的是UTC时间
                     // 我们直接在UTC时间戳基础上加8小时，然后用UTC方法获取时间
                     // 这样可以得到 "UTC+8" 的时间值
@@ -1148,7 +1180,7 @@ router.post('/calls/batch-delete', (req, res) => {
  */
 router.get('/calls', (req, res) => {
     try {
-        const { devId, phoneNum, callType, dateStart, dateEnd, page = 1, limit = 50 } = req.query;
+        const { devId, phoneNum, callType, dateStart, dateEnd, page = 1, limit = 50, export: exportType } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM call_records WHERE 1=1';
@@ -1170,6 +1202,11 @@ router.get('/calls', (req, res) => {
             countSql += ' AND call_type = ?';
             params.push(callType);
         }
+        if (req.query.slot) {
+            sql += ' AND slot = ?';
+            countSql += ' AND slot = ?';
+            params.push(req.query.slot);
+        }
         if (dateStart) {
             sql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
             countSql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
@@ -1181,10 +1218,37 @@ router.get('/calls', (req, res) => {
             params.push(dateEnd);
         }
         
-        sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        sql += ' ORDER BY created_at DESC';
         
-        const records = db.prepare(sql).all(...params, parseInt(limit), parseInt(offset));
-        const { total } = db.prepare(countSql).get(...params);
+        if (exportType !== 'csv') {
+            sql += ' LIMIT ? OFFSET ?';
+            params.push(parseInt(limit), parseInt(offset));
+        }
+        
+        const records = db.prepare(sql).all(...params);
+        
+        if (exportType === 'csv') {
+            const headers = ['ID', '设备ID', '卡槽', '消息类型', '通话分类', '号码', '时间', '时长'];
+            const csvContent = [
+                headers.join(','),
+                ...records.map(r => [
+                    r.id,
+                    r.dev_id,
+                    r.slot,
+                    r.msg_type,
+                    r.call_type,
+                    r.phone_num,
+                    r.start_time || r.created_at,
+                    r.duration
+                ].join(','))
+            ].join('\n');
+            
+            res.header('Content-Type', 'text/csv');
+            res.header('Content-Disposition', `attachment; filename="calls_export_${new Date().getTime()}.csv"`);
+            return res.send('\uFEFF' + csvContent);
+        }
+        
+        const { total } = db.prepare(countSql).get(...params.slice(0, params.length - 2));
         
         res.json({
             success: true,
@@ -1231,7 +1295,7 @@ router.post('/messages/batch-delete', (req, res) => {
  */
 router.get('/messages', (req, res) => {
     try {
-        const { devId, type, msgType, msgCategory, dateStart, dateEnd, page = 1, limit = 100 } = req.query;
+        const { devId, type, msgType, msgCategory, dateStart, dateEnd, page = 1, limit = 100, export: exportType } = req.query;
         const offset = (page - 1) * limit;
         
         let sql = 'SELECT * FROM messages WHERE 1=1';
@@ -1283,10 +1347,35 @@ router.get('/messages', (req, res) => {
             params.push(dateEnd);
         }
         
-        sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        sql += ' ORDER BY created_at DESC';
         
-        const records = db.prepare(sql).all(...params, parseInt(limit), parseInt(offset));
-        const { total } = db.prepare(countSql).get(...params);
+        if (exportType !== 'csv') {
+            sql += ' LIMIT ? OFFSET ?';
+            params.push(parseInt(limit), parseInt(offset));
+        }
+        
+        const records = db.prepare(sql).all(...params);
+        
+        if (exportType === 'csv') {
+            const headers = ['ID', '设备ID', '消息类型', '类型名称', '原始数据', '时间'];
+            const csvContent = [
+                headers.join(','),
+                ...records.map(r => [
+                    r.id,
+                    r.dev_id,
+                    r.type,
+                    r.type_name,
+                    `"${(r.raw_data || '').replace(/"/g, '""')}"`,
+                    r.created_at
+                ].join(','))
+            ].join('\n');
+            
+            res.header('Content-Type', 'text/csv');
+            res.header('Content-Disposition', `attachment; filename="messages_export_${new Date().getTime()}.csv"`);
+            return res.send('\uFEFF' + csvContent);
+        }
+        
+        const { total } = db.prepare(countSql).get(...params.slice(0, params.length - 2));
         
         res.json({
             success: true,
