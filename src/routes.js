@@ -1055,9 +1055,20 @@ router.get('/sms/latest-text', (req, res) => {
         let sql = 'SELECT * FROM sms_records WHERE direction = ? ORDER BY created_at DESC LIMIT ?';
         const records = db.prepare(sql).all(direction, limit);
         
-        const text = records.map(r => 
-            `来自: ${r.phone_num}\n时间: ${r.sms_time || r.created_at}\n内容: ${r.content}`
-        ).join('\n\n----------------\n\n');
+        const text = records.map(r => {
+            let timeStr = r.sms_time || r.created_at;
+            // 如果是时间戳（纯数字），转换为可读格式
+            if (timeStr && /^\d+$/.test(timeStr)) {
+                try {
+                    const date = new Date(parseInt(timeStr) * 1000);
+                    const pad = n => n < 10 ? '0' + n : n;
+                    timeStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+                } catch (e) {
+                    // 转换失败则保持原样
+                }
+            }
+            return `来自: ${r.phone_num}\n时间: ${timeStr}\n内容: ${r.content}`;
+        }).join('\n\n----------------\n\n');
         
         res.set('Content-Type', 'text/plain; charset=utf-8');
         res.send(text || '暂无新短信');
