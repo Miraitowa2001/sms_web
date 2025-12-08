@@ -16,6 +16,67 @@ const { decryptData } = require('./aesDecrypt');
 const app = express();
 const PORT = config.port;
 
+// ==================== API Key 认证中间件 ====================
+
+/**
+ * 验证 API Key（用于开发板推送接口）
+ * 支持多种传递方式：
+ * 1. Header: X-API-Key: your-key
+ * 2. Header: Authorization: Bearer your-key
+ * 3. Query: ?apiKey=your-key
+ * 4. Body: { apiKey: "your-key", ... }
+ */
+function apiKeyAuth(req, res, next) {
+    // 检查是否启用 API Key 认证
+    if (!config.apiKey.enabled) {
+        return next();
+    }
+    
+    const configuredKey = config.apiKey.key;
+    
+    // 从多个位置获取 API Key
+    let providedKey = null;
+    
+    // 1. 从 Header 获取 (X-API-Key)
+    if (req.headers['x-api-key']) {
+        providedKey = req.headers['x-api-key'];
+    }
+    // 2. 从 Header 获取 (Authorization: Bearer xxx)
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        providedKey = req.headers.authorization.substring(7);
+    }
+    // 3. 从 Query 获取
+    else if (req.query.apiKey) {
+        providedKey = req.query.apiKey;
+    }
+    // 4. 从 Body 获取
+    else if (req.body && req.body.apiKey) {
+        providedKey = req.body.apiKey;
+    }
+    
+    // 验证 API Key
+    if (!providedKey) {
+        console.warn(`[Auth] API Key 缺失 - IP: ${req.ip}, Path: ${req.path}`);
+        return res.status(401).json({ 
+            code: -1, 
+            error: 'API Key 缺失',
+            message: '请提供有效的 API Key'
+        });
+    }
+    
+    if (providedKey !== configuredKey) {
+        console.warn(`[Auth] API Key 无效 - IP: ${req.ip}, Path: ${req.path}, Key: ${providedKey.substring(0, 8)}...`);
+        return res.status(403).json({ 
+            code: -1, 
+            error: 'API Key 无效',
+            message: 'API Key 验证失败'
+        });
+    }
+    
+    // 验证通过
+    next();
+}
+
 // ==================== HTTP基本鉴权中间件 ====================
 
 /**
@@ -28,7 +89,7 @@ function basicAuth(req, res, next) {
         return next();
     }
     
-    // 检查是否是排除的路径（开发板推送接口不需要鉴权）
+    // 检查是否是排除的路径（开发板推送接口不需要 Basic Auth，由 API Key 单独验证）
     const excludePaths = config.auth.excludePaths || [];
     if (excludePaths.some(p => req.path === p || req.path.startsWith(p + '/'))) {
         return next();
@@ -73,6 +134,22 @@ app.use(basicAuth);
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '../public')));
 
+// ==================== AES 解密辅助函数 ====================
+
+/**
+ * 尝试解密单个字段
+ */
+function tryDecrypt(value) {
+    if (!config.aes.enabled || !value) {
+        return value;
+    }
+    try {
+        return decryptData({ p: value }, config.aes);
+    } catch (e) {
+        return value;
+    }
+}
+
 // ==================== 开发板数据接收接口 ====================
 
 /**
@@ -80,16 +157,25 @@ app.use(express.static(path.join(__dirname, '../public')));
  * 接收开发板推送的消息 (application/json 格式)
  * 
  * 开发板配置:
- * - 接口地址: http://your-server:3000/push
+ * - 接口地址: http://your-server:3000/push?apiKey=your-key
  * - HTTP请求方式: POST
  * - Content-Type: application/json
+ * 
+ * API Key 传递方式（任选一种）:
+ * - Header: X-API-Key: your-key
+ * - Header: Authorization: Bearer your-key
+ * - Query: ?apiKey=your-key
+ * - Body: { apiKey: "your-key", ... }
  */
-app.post('/push', (req, res) => {
+app.post('/push', apiKeyAuth, (req, res) => {
     console.log('[Push] 收到JSON推送:', req.body);
     
     try {
+        // 移除 body 中的 apiKey（如果有）
+        const { apiKey, ...bodyData } = req.body;
+        
         // 如果启用了AES加密，先解密数据
-        const data = decryptData(req.body, config.aes);
+        const data = decryptData(bodyData, config.aes);
         const result = messageHandler.handleMessage(data);
         res.json({ code: 0, message: 'OK' });
     } catch (error) {
@@ -103,16 +189,19 @@ app.post('/push', (req, res) => {
  * 接收开发板推送的消息 (application/x-www-form-urlencoded 格式)
  * 
  * 开发板配置:
- * - 接口地址: http://your-server:3000/push-form
+ * - 接口地址: http://your-server:3000/push-form?apiKey=your-key
  * - HTTP请求方式: POST
  * - Content-Type: application/x-www-form-urlencoded
  */
-app.post('/push-form', (req, res) => {
+app.post('/push-form', apiKeyAuth, (req, res) => {
     console.log('[Push] 收到FORM推送:', req.body);
     
     try {
+        // 移除 body 中的 apiKey（如果有）
+        const { apiKey, ...bodyData } = req.body;
+        
         // 如果启用了AES加密，先解密数据
-        const decrypted = decryptData(req.body, config.aes);
+        const decrypted = decryptData(bodyData, config.aes);
         
         // 将表单数据转换为统一格式
         const data = {
@@ -138,23 +227,26 @@ app.post('/push-form', (req, res) => {
  * 接收开发板推送的消息 (GET方式)
  * 
  * 开发板配置:
- * - 接口地址: http://your-server:3000/push
+ * - 接口地址: http://your-server:3000/push?apiKey=your-key
  * - HTTP请求方式: GET
  */
-app.get('/push', (req, res) => {
+app.get('/push', apiKeyAuth, (req, res) => {
     console.log('[Push] 收到GET推送:', req.query);
     
     try {
+        // 移除 query 中的 apiKey
+        const { apiKey, ...queryData } = req.query;
+        
         // GET + JSON 方式，数据在 p 参数中
-        let data = req.query;
-        if (req.query.p) {
+        let data = queryData;
+        if (queryData.p) {
             try {
                 // 尝试 AES 解密 p 参数
-                const decryptedP = tryDecrypt(req.query.p);
+                const decryptedP = tryDecrypt(queryData.p);
                 data = typeof decryptedP === 'string' ? JSON.parse(decryptedP) : decryptedP;
             } catch (e) {
                 // 不是JSON格式，使用原始query参数（也尝试解密）
-                data = tryDecrypt(req.query);
+                data = tryDecrypt(queryData);
             }
         }
         
@@ -199,15 +291,19 @@ async function startServer() {
         console.log('╠════════════════════════════════════════════════════════════╣');
         console.log(`║  服务地址: http://localhost:${PORT}                           ║`);
         console.log('║                                                            ║');
+        console.log('║  🔐 安全配置:                                              ║');
+        console.log(`║  ├─ API Key 认证: ${config.apiKey.enabled ? '已启用' : '已禁用'}                               ║`);
+        console.log(`║  └─ 管理界面认证: ${config.auth.enabled ? '已启用' : '已禁用'}                               ║`);
+        console.log('║                                                            ║');
         console.log('║  开发板配置说明:                                           ║');
         console.log('║  ┌────────────────────────────────────────────────────┐    ║');
-        console.log(`║  │ 接口地址(JSON): http://你的服务器IP:${PORT}/push           │    ║`);
-        console.log(`║  │ 接口地址(FORM): http://你的服务器IP:${PORT}/push-form      │    ║`);
+        console.log(`║  │ 接口地址(JSON): http://IP:${PORT}/push?apiKey=YOUR_KEY   │    ║`);
+        console.log(`║  │ 接口地址(FORM): http://IP:${PORT}/push-form?apiKey=KEY   │    ║`);
         console.log('║  │ HTTP请求方式: POST                                 │    ║');
         console.log('║  │ Content-Type: application/json (推荐)              │    ║');
         console.log('║  └────────────────────────────────────────────────────┘    ║');
         console.log('║                                                            ║');
-        console.log('║  管理界面: http://localhost:' + PORT + '                           ║');
+        console.log('║  管理界面: https://your-domain (需要登录)                  ║');
         console.log('╚════════════════════════════════════════════════════════════╝');
         console.log('');
     });

@@ -1434,11 +1434,44 @@
                                     <label for="ctrl-ip">设备IP地址 *</label>
                                     <input type="text" id="ctrl-ip" placeholder="如: 192.168.1.100">
                                 </div>
-                                <div class="form-group" style="grid-column: 1 / -1;">
-                                    <label for="ctrl-token">Token *</label>
-                                    <input type="text" id="ctrl-token" placeholder="从开发板后台"密码管理"页面复制token">
-                                    <small>登录开发板后台 → 密码管理 → 复制32位token</small>
+                                <div class="form-group">
+                                    <label for="ctrl-admin-user">管理员账号</label>
+                                    <input type="text" id="ctrl-admin-user" placeholder="开发板管理员账号">
                                 </div>
+                                <div class="form-group">
+                                    <label for="ctrl-admin-pass">管理员密码</label>
+                                    <input type="password" id="ctrl-admin-pass" placeholder="开发板管理员密码">
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label for="ctrl-token">Token (可选)</label>
+                                    <input type="text" id="ctrl-token" placeholder="输入账号密码可自动计算，或直接粘贴Token">
+                                    <small>登录开发板后台 → 密码管理 → 复制Token，或输入账号密码自动计算</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Token 计算器 -->
+                            <div class="token-calculator" style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                                <h4 style="font-size: 14px; color: #475569; margin-bottom: 12px;">🔐 Token 计算器</h4>
+                                <div class="form-grid" style="gap: 10px;">
+                                    <div class="form-group">
+                                        <label for="calc-dev-id">开发板设备ID</label>
+                                        <input type="text" id="calc-dev-id" placeholder="如: AAAA1234">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="calc-admin-user">管理员账号</label>
+                                        <input type="text" id="calc-admin-user" placeholder="开发板管理员账号">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="calc-admin-pass">管理员密码</label>
+                                        <input type="password" id="calc-admin-pass" placeholder="开发板管理员密码">
+                                    </div>
+                                </div>
+                                <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <button class="btn btn-primary btn-sm" onclick="calculateToken()">🧮 计算Token</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="fillTokenToInput()">📋 填入上方</button>
+                                    <span id="calc-token-result" style="font-family: monospace; font-size: 13px; color: #059669; word-break: break-all;"></span>
+                                </div>
+                                <small style="display: block; margin-top: 8px; color: #94a3b8;">计算规则: SHA256(设备ID|管理员账号|管理员密码)</small>
                             </div>
                         </div>
                         
@@ -1591,6 +1624,7 @@
         const AUTH_KEY = 'iot_server_auth';
         const REMEMBER_KEY = 'iot_remember_login';
         const USERNAME_KEY = 'iot_saved_username';
+        const TOKEN_KEY = 'iot_device_token';
         
         // 封装带鉴权的 fetch
         async function apiFetch(url, options = {}) {
@@ -2716,6 +2750,19 @@
             if (!token) {
                 token = localStorage.getItem(TOKEN_KEY);
             }
+
+            // 如果还是没有Token，尝试使用账号密码计算
+            if (!token) {
+                const devId = document.getElementById('ctrl-device').value;
+                const adminUser = document.getElementById('ctrl-admin-user').value.trim();
+                const adminPass = document.getElementById('ctrl-admin-pass').value.trim();
+                
+                if (devId && adminUser && adminPass) {
+                    const rawString = `${devId}|${adminUser}|${adminPass}`;
+                    const tokenFull = await sha256(rawString);
+                    token = tokenFull.substring(16, 48);
+                }
+            }
             
             const resultBox = document.getElementById('ctrl-result');
             
@@ -2727,7 +2774,7 @@
             
             if (!token) {
                 resultBox.className = 'result-box error';
-                resultBox.textContent = '❌ 错误: 请输入Token（从开发板后台复制）';
+                resultBox.textContent = '❌ 错误: 请输入Token或管理员账号密码';
                 return;
             }
             
@@ -2787,6 +2834,92 @@
             resultBox.className = 'result-box';
             resultBox.textContent = '等待发送命令...';
         }
+        
+        // ==================== Token 计算功能 ====================
+        
+        /**
+         * SHA256 哈希计算
+         * @param {string} message - 要哈希的字符串
+         * @returns {Promise<string>} - 32位大写十六进制字符串
+         */
+        async function sha256(message) {
+            // 将字符串编码为 UTF-8 字节数组
+            const msgBuffer = new TextEncoder().encode(message);
+            // 使用 Web Crypto API 计算 SHA-256
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            // 转换为十六进制字符串
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            // 返回完整 SHA-256 (64位十六进制字符串)
+            return hashHex.toUpperCase();
+        }
+        
+        /**
+         * 计算 Token
+         * 规则: SHA256(设备ID|管理员账号|管理员密码)
+         */
+        async function calculateToken() {
+            const devId = document.getElementById('calc-dev-id').value.trim();
+            const adminUser = document.getElementById('calc-admin-user').value.trim();
+            const adminPass = document.getElementById('calc-admin-pass').value.trim();
+            const resultSpan = document.getElementById('calc-token-result');
+            
+            if (!devId) {
+                resultSpan.style.color = '#dc2626';
+                resultSpan.textContent = '❌ 请输入设备ID';
+                return null;
+            }
+            if (!adminUser) {
+                resultSpan.style.color = '#dc2626';
+                resultSpan.textContent = '❌ 请输入管理员账号';
+                return null;
+            }
+            if (!adminPass) {
+                resultSpan.style.color = '#dc2626';
+                resultSpan.textContent = '❌ 请输入管理员密码';
+                return null;
+            }
+            
+            try {
+                // 拼接字符串: 设备ID|管理员账号|管理员密码
+                const rawString = `${devId}|${adminUser}|${adminPass}`;
+                // 计算 SHA256 并取32位大写
+                const tokenFull = await sha256(rawString);
+                const token = tokenFull.substring(16, 48);
+                
+                resultSpan.style.color = '#059669';
+                resultSpan.textContent = `✅ ${token}`;
+                
+                return token;
+            } catch (error) {
+                resultSpan.style.color = '#dc2626';
+                resultSpan.textContent = `❌ 计算失败: ${error.message}`;
+                return null;
+            }
+        }
+        
+        /**
+         * 将计算的 Token 填入输入框
+         */
+        async function fillTokenToInput() {
+            const token = await calculateToken();
+            if (token) {
+                document.getElementById('ctrl-token').value = token;
+                // 保存到本地存储
+                localStorage.setItem(TOKEN_KEY, token);
+            }
+        }
+        
+        // 当选择设备时，自动填充设备ID到计算器
+        const originalOnDeviceSelect = onDeviceSelect;
+        onDeviceSelect = function() {
+            originalOnDeviceSelect();
+            const select = document.getElementById('ctrl-device');
+            const devId = select.value;
+            if (devId) {
+                document.getElementById('calc-dev-id').value = devId;
+            }
+        };
     </script>
 </body>
 </html>

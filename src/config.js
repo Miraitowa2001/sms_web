@@ -17,13 +17,23 @@ const config = {
     // 服务器端口
     port: process.env.PORT || 3000,
     
-    // HTTP鉴权配置
+    // HTTP鉴权配置（管理界面）
     auth: {
         enabled: process.env.AUTH_ENABLED !== 'false',  // 默认启用鉴权
         username: process.env.AUTH_USERNAME || 'admin',  // 管理员用户名
         password: process.env.AUTH_PASSWORD || 'admin123',  // 管理员密码（生产环境请务必修改）
-        // 不需要鉴权的路径（开发板推送数据的接口）
+        // 不需要鉴权的路径（开发板推送数据的接口由 apiKey 单独验证）
         excludePaths: ['/push', '/push-form']
+    },
+    
+    // API Key 认证配置（开发板推送接口）
+    apiKey: {
+        enabled: process.env.API_KEY_ENABLED !== 'false',  // 默认启用
+        key: process.env.API_KEY || 'your-secure-api-key-here',  // 生产环境请务必修改
+        // 支持的传递方式: header, query, body
+        // header: X-API-Key 或 Authorization: Bearer <key>
+        // query: ?apiKey=xxx
+        // body: { apiKey: "xxx", ... }
     },
     
     // AES加密配置（用于解密开发板上报的加密数据）
@@ -35,7 +45,6 @@ const config = {
         // 1. ASCII字符串: "1234567890123456" (必须16字节)
         // 2. 十进制数组: "49,50,51,52,53,54,55,56,57,48,49,50,51,52,53,54"
         // 3. 十六进制数组: "0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x30,0x31,0x32,0x33,0x34,0x35,0x36"
-        
         key: process.env.AES_KEY || '1234567890123456',  // 16字节密钥（请在 .env 中配置实际值）
         iv: process.env.AES_IV || '1234567890123456'     // 16字节初始化向量（请在 .env 中配置实际值）
     },
