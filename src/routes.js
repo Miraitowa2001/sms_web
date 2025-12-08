@@ -1060,9 +1060,16 @@ router.get('/sms/latest-text', (req, res) => {
             // 如果是时间戳（纯数字），转换为可读格式
             if (timeStr && /^\d+$/.test(timeStr)) {
                 try {
-                    const date = new Date(parseInt(timeStr) * 1000);
+                    // 假设服务器是UTC时间，或者时间戳是UTC时间戳
+                    // 用户要求+8小时才是北京时间，说明当前输出的是UTC时间
+                    // 我们直接在UTC时间戳基础上加8小时，然后用UTC方法获取时间
+                    // 这样可以得到 "UTC+8" 的时间值
+                    const ts = parseInt(timeStr) * 1000;
+                    const date = new Date(ts + 8 * 3600 * 1000);
+                    
                     const pad = n => n < 10 ? '0' + n : n;
-                    timeStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+                    // 使用 getUTC* 方法，获取的是加上8小时后的时间
+                    timeStr = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
                 } catch (e) {
                     // 转换失败则保持原样
                 }

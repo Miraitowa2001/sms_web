@@ -222,12 +222,18 @@
         }
         
         .sms-content {
-            max-width: 300px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            max-width: 400px;
+            white-space: normal;
+            word-break: break-all;
         }
         
+        /* 允许表格列宽调整 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
         .device-id {
             font-family: monospace;
             background: #f3f4f6;
