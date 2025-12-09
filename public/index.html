@@ -356,8 +356,8 @@
 
             /* 搜索框紧凑布局 */
             .search-box { gap: 8px; margin-bottom: 12px; }
-            .form-control { padding: 6px 8px; font-size: 13px; height: 34px; }
-            .search-box .btn { width: 100%; height: 34px; margin-top: 4px; }
+            .form-control { padding: 4px 8px; font-size: 13px; height: 30px; } /* 减小高度 */
+            .search-box .btn { width: 100%; height: 30px; margin-top: 4px; }
 
             /* 移动端表格卡片化优化 */
             table, thead, tbody, th, td, tr { display: block; }
@@ -1261,8 +1261,8 @@
                         if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                         if (direction) url += `&direction=${direction}`;
                         if (slot) url += `&slot=${slot}`;
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        if (dateStart) url += `&dateStart=${dateStart}`;
+                        if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
@@ -1325,8 +1325,8 @@
                             if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                             if (direction) url += `&direction=${direction}`;
                             if (slot) url += `&slot=${slot}`;
-                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                            if (dateStart) url += `&dateStart=${dateStart}`;
+                            if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         }
                         
                         const token = localStorage.getItem(App.config.authKey);
@@ -1350,8 +1350,8 @@
                         if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                         if (callType) url += `&callType=${callType}`;
                         if (slot) url += `&slot=${slot}`;
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        if (dateStart) url += `&dateStart=${dateStart}`;
+                        if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
@@ -1415,8 +1415,8 @@
                             if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
                             if (callType) url += `&callType=${callType}`;
                             if (slot) url += `&slot=${slot}`;
-                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                            if (dateStart) url += `&dateStart=${dateStart}`;
+                            if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         }
                         
                         const token = localStorage.getItem(App.config.authKey);
@@ -1439,8 +1439,8 @@
                             if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
                             else url += `&msgType=${msgType}`;
                         }
-                        if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                        if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                        if (dateStart) url += `&dateStart=${dateStart}`;
+                        if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         
                         try {
                             const data = await App.Utils.apiFetch(url);
@@ -1510,8 +1510,8 @@
                                 if (isNaN(msgType)) url += `&msgCategory=${msgType}`;
                                 else url += `&msgType=${msgType}`;
                             }
-                            if (dateStart) url += `&startTime=${dateStart} 00:00:00`;
-                            if (dateEnd) url += `&endTime=${dateEnd} 23:59:59`;
+                            if (dateStart) url += `&dateStart=${dateStart}`;
+                            if (dateEnd) url += `&dateEnd=${dateEnd}`;
                         }
                         
                         const token = localStorage.getItem(App.config.authKey);
