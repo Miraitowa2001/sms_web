@@ -55,11 +55,12 @@ class MessageHandler {
         }
 
         try {
+            const now = this.formatTime();
             const stmt = db.prepare(`
-                INSERT INTO messages (dev_id, type, type_name, raw_data)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO messages (dev_id, type, type_name, raw_data, created_at)
+                VALUES (?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, type, getMessageTypeName(type), JSON.stringify(data));
+            stmt.run(devId, type, getMessageTypeName(type), JSON.stringify(data), now);
         } catch (error) {
             console.error('[Handler] 记录消息失败:', error);
         }
