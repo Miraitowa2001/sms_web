@@ -91,6 +91,18 @@
         .btn-sm { padding: 4px 10px; font-size: 12px; height: 28px; }
         .btn-icon { padding: 6px; border-radius: 6px; }
 
+        /* 强调显示的号码 */
+        .phone-number {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+            font-weight: 600;
+            color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
         /* 卡片 */
         .card {
             background: var(--bg-card);
@@ -1275,7 +1287,7 @@
                                         <td data-label="设备"><span class="badge badge-neutral" style="background:#e0e7ff; color:#4338ca;">${devName}</span></td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${sms.slot || '?'}</span></td>
                                         <td data-label="方向"><span class="badge ${sms.direction === 'in' ? 'badge-info' : 'badge-success'}">${sms.direction === 'in' ? '接收' : '发送'}</span></td>
-                                        <td data-label="号码">${sms.phone_num}</td>
+                                        <td data-label="号码"><span class="phone-number">${sms.phone_num}</span></td>
                                         <td data-label="内容"><div class="sms-content">${App.Utils.escapeHtml(sms.content)}</div></td>
                                         <td data-label="时间">${App.Utils.formatTime(sms.sms_time || sms.created_at)}</td>
                                     </tr>
@@ -1365,7 +1377,7 @@
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${call.slot || '?'}</span></td>
                                         <td data-label="消息类型">${App.Utils.getCallMsgTypeText(call.msg_type)}</td>
                                         <td data-label="通话分类">${App.Utils.getCallTypeText(call.call_type)}</td>
-                                        <td data-label="对方号码">${call.phone_num}</td>
+                                        <td data-label="对方号码"><span class="phone-number">${call.phone_num}</span></td>
                                         <td data-label="时间">${App.Utils.formatTime(call.start_time)}</td>
                                         <td data-label="时长">${App.Utils.formatDuration(call.duration)}</td>
                                     </tr>
