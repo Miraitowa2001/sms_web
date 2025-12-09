@@ -1,13 +1,13 @@
-version: '3'
 services:
-  lvyou-server:
+  sms-server:
     build: .
-    container_name: lvyou-server
+    container_name: sms-server
     restart: always
     ports:
-      - "3000:3000"
+      - "36001:3000"
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env
     environment:
       - TZ=Asia/Shanghai
+      - PORT=3000

@@ -654,7 +654,12 @@
                                 </div>
                                 <div style="flex: 1; min-width: 200px;">
                                     <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">设备IP</label>
-                                    <input type="text" id="ctrl-device-ip" class="form-control" placeholder="设备IP地址">
+                                    <div style="display: flex; gap: 5px;">
+                                        <input type="text" id="ctrl-device-ip" class="form-control" placeholder="设备IP地址">
+                                        <button class="btn btn-secondary btn-icon" onclick="const ip = document.getElementById('ctrl-device-ip').value; if(ip) window.open('http://' + ip + '/mgr', '_blank'); else App.UI.toast('请先选择设备或输入IP', 'warning');" title="进入后台管理">
+                                            <i data-lucide="external-link" size="16"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1035,7 +1040,7 @@
                                                 ${d.status === 'online' ? '在线' : '离线'}
                                             </span>
                                         </td>
-                                        <td data-label="网络">${d.last_ip || '-'}</td>
+                                        <td data-label="网络">${d.last_ip ? `<a href="http://${d.last_ip}/mgr" target="_blank" style="text-decoration:underline; color:var(--primary-color);" title="进入后台管理">${d.last_ip}</a>` : '-'}</td>
                                         <td data-label="SIM卡">${App.Utils.formatSimInfo(d.sim_cards)}</td>
                                         <td data-label="最后在线" style="color:var(--text-secondary); font-size:12px;">${App.Utils.formatTime(d.last_seen_at)}</td>
                                     </tr>
