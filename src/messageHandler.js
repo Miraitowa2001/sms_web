@@ -70,20 +70,21 @@ class MessageHandler {
         // 更新或创建设备记录
         const existingDevice = db.prepare('SELECT id FROM devices WHERE dev_id = ?').get(devId);
         
+        const now = this.formatTime();
         if (existingDevice) {
             const stmt = db.prepare(`
                 UPDATE devices 
                 SET last_ip = ?, last_ssid = ?, last_dbm = ?, hw_ver = ?,
-                    status = ?, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    status = ?, last_seen_at = ?, updated_at = ?
                 WHERE dev_id = ?
             `);
-            stmt.run(ip || '', ssid || '', dbm || 0, hwVer || '', DEVICE_STATUS.ONLINE, devId);
+            stmt.run(ip || '', ssid || '', dbm || 0, hwVer || '', DEVICE_STATUS.ONLINE, now, now, devId);
         } else {
             const stmt = db.prepare(`
-                INSERT INTO devices (dev_id, last_ip, last_ssid, last_dbm, hw_ver, status, last_seen_at)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO devices (dev_id, last_ip, last_ssid, last_dbm, hw_ver, status, last_seen_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, ip || '', ssid || '', dbm || 0, hwVer || '', DEVICE_STATUS.ONLINE);
+            stmt.run(devId, ip || '', ssid || '', dbm || 0, hwVer || '', DEVICE_STATUS.ONLINE, now, now, now);
         }
 
         // 如果有卡槽信息，更新SIM卡状态
@@ -123,6 +124,7 @@ class MessageHandler {
 
         // 更新或创建SIM卡记录
         const existingSim = db.prepare('SELECT id FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slot);
+        const now = this.formatTime();
         
         if (existingSim) {
             const stmt = db.prepare(`
@@ -133,16 +135,16 @@ class MessageHandler {
                     dbm = COALESCE(?, dbm),
                     plmn = COALESCE(NULLIF(?, ''), plmn),
                     status = ?,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = ?
                 WHERE dev_id = ? AND slot = ?
             `);
-            stmt.run(iccId || '', imsi || '', msIsdn || '', dbm, plmn || '', status, devId, slot);
+            stmt.run(iccId || '', imsi || '', msIsdn || '', dbm, plmn || '', status, now, devId, slot);
         } else {
             const stmt = db.prepare(`
-                INSERT INTO sim_cards (dev_id, slot, iccid, imsi, msisdn, dbm, plmn, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO sim_cards (dev_id, slot, iccid, imsi, msisdn, dbm, plmn, status, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, slot, iccId || '', imsi || '', msIsdn || '', dbm || 0, plmn || '', status);
+            stmt.run(devId, slot, iccId || '', imsi || '', msIsdn || '', dbm || 0, plmn || '', status, now);
         }
 
         // 更新设备最后在线时间
@@ -282,11 +284,12 @@ class MessageHandler {
     ensureDeviceExists(devId) {
         const existing = db.prepare('SELECT id FROM devices WHERE dev_id = ?').get(devId);
         if (!existing) {
+            const now = this.formatTime();
             const stmt = db.prepare(`
-                INSERT INTO devices (dev_id, status, last_seen_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO devices (dev_id, status, last_seen_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, DEVICE_STATUS.ONLINE);
+            stmt.run(devId, DEVICE_STATUS.ONLINE, now, now, now);
         }
     }
 
@@ -294,12 +297,13 @@ class MessageHandler {
      * 更新设备最后在线时间
      */
     updateDeviceLastSeen(devId) {
+        const now = this.formatTime();
         const stmt = db.prepare(`
             UPDATE devices 
-            SET status = ?, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            SET status = ?, last_seen_at = ?, updated_at = ?
             WHERE dev_id = ?
         `);
-        stmt.run(DEVICE_STATUS.ONLINE, devId);
+        stmt.run(DEVICE_STATUS.ONLINE, now, now, devId);
     }
 
     /**
@@ -341,13 +345,18 @@ class MessageHandler {
      * @param {number} timeoutSeconds - 超时秒数
      */
     checkOfflineDevices(timeoutSeconds = 300) {
+        // 计算超时阈值时间 (当前时间 - timeoutSeconds)
+        const now = new Date();
+        const thresholdTime = new Date(now.getTime() - timeoutSeconds * 1000);
+        const thresholdStr = this.formatTime(thresholdTime);
+
         const stmt = db.prepare(`
             UPDATE devices 
             SET status = ?
             WHERE status = ? 
-            AND last_seen_at < datetime('now', '-' || ? || ' seconds')
+            AND last_seen_at < ?
         `);
-        const result = stmt.run(DEVICE_STATUS.OFFLINE, DEVICE_STATUS.ONLINE, timeoutSeconds);
+        const result = stmt.run(DEVICE_STATUS.OFFLINE, DEVICE_STATUS.ONLINE, thresholdStr);
         
         if (result.changes > 0) {
             console.log(`[System] ${result.changes} 个设备标记为离线`);

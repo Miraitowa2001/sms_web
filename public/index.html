@@ -1926,23 +1926,27 @@
                 },
                 formatTime(timeStr) {
                     if (!timeStr) return '-';
+                    
+                    // 如果已经是标准格式 YYYY-MM-DD HH:mm:ss，直接返回
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+                        return timeStr;
+                    }
+
+                    let date;
                     // 如果是时间戳（纯数字）
                     if (/^\d+$/.test(timeStr)) {
-                        try {
-                            // 假设是UTC时间戳，+8小时转北京时间
-                            const ts = parseInt(timeStr) * 1000;
-                            const date = new Date(ts + 8 * 3600 * 1000);
-                            const pad = n => n < 10 ? '0' + n : n;
-                            return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
-                        } catch (e) { return timeStr; }
+                        const ts = parseInt(timeStr);
+                        // 判断是秒还是毫秒
+                        date = new Date(ts < 10000000000 ? ts * 1000 : ts);
+                    } else {
+                        // 其他格式尝试转换
+                        date = new Date(timeStr);
                     }
-                    // 如果是ISO字符串，尝试转换
-                    try {
-                        const date = new Date(timeStr);
-                        // 简单处理，直接显示本地时间（假设浏览器在中国）
-                        // 或者手动处理时区
-                        return date.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
-                    } catch (e) { return timeStr; }
+
+                    if (isNaN(date.getTime())) return timeStr;
+
+                    const pad = n => n < 10 ? '0' + n : n;
+                    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
                 },
                 formatSimInfo(simCards) {
                     if (!simCards || simCards.length === 0) return '-';

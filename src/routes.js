@@ -1032,16 +1032,14 @@ router.get('/sms', (req, res) => {
             params.push(req.query.slot);
         }
         if (dateStart) {
-            // 兼容 sms_time 为时间戳或空的情况，统一转为 UTC+8 日期进行比较
-            const dateSql = "DATE(CASE WHEN sms_time GLOB '[0-9]*' THEN datetime(sms_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
-            sql += ` AND ${dateSql} >= ?`;
-            countSql += ` AND ${dateSql} >= ?`;
+            // sms_time 已经是 YYYY-MM-DD HH:mm:ss 格式，直接截取日期比较
+            sql += ` AND DATE(sms_time) >= ?`;
+            countSql += ` AND DATE(sms_time) >= ?`;
             params.push(dateStart);
         }
         if (dateEnd) {
-            const dateSql = "DATE(CASE WHEN sms_time GLOB '[0-9]*' THEN datetime(sms_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
-            sql += ` AND ${dateSql} <= ?`;
-            countSql += ` AND ${dateSql} <= ?`;
+            sql += ` AND DATE(sms_time) <= ?`;
+            countSql += ` AND DATE(sms_time) <= ?`;
             params.push(dateEnd);
         }
         
@@ -1230,16 +1228,14 @@ router.get('/calls', (req, res) => {
             params.push(req.query.slot);
         }
         if (dateStart) {
-            // 兼容 start_time 为时间戳或空的情况，统一转为 UTC+8 日期进行比较
-            const dateSql = "DATE(CASE WHEN start_time GLOB '[0-9]*' THEN datetime(start_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
-            sql += ` AND ${dateSql} >= ?`;
-            countSql += ` AND ${dateSql} >= ?`;
+            // start_time 已经是 YYYY-MM-DD HH:mm:ss 格式，直接截取日期比较
+            sql += ` AND DATE(start_time) >= ?`;
+            countSql += ` AND DATE(start_time) >= ?`;
             params.push(dateStart);
         }
         if (dateEnd) {
-            const dateSql = "DATE(CASE WHEN start_time GLOB '[0-9]*' THEN datetime(start_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
-            sql += ` AND ${dateSql} <= ?`;
-            countSql += ` AND ${dateSql} <= ?`;
+            sql += ` AND DATE(start_time) <= ?`;
+            countSql += ` AND DATE(start_time) <= ?`;
             params.push(dateEnd);
         }
         
@@ -1324,7 +1320,8 @@ router.get('/messages', (req, res) => {
         const offset = (page - 1) * limit;
         
         // 修复时间显示问题：数据库存储的是UTC时间，查询时转换为UTC+8
-        let sql = "SELECT id, dev_id, type, type_name, raw_data, datetime(created_at, '+8 hours') as created_at FROM messages WHERE 1=1";
+        // 注意：现在 created_at 已经是北京时间格式，不需要再转换
+        let sql = "SELECT id, dev_id, type, type_name, raw_data, created_at FROM messages WHERE 1=1";
         let countSql = 'SELECT COUNT(*) as total FROM messages WHERE 1=1';
         const params = [];
         
@@ -1372,13 +1369,13 @@ router.get('/messages', (req, res) => {
             }
         }
         if (dateStart) {
-            sql += " AND DATE(created_at, '+8 hours') >= ?";
-            countSql += " AND DATE(created_at, '+8 hours') >= ?";
+            sql += " AND DATE(created_at) >= ?";
+            countSql += " AND DATE(created_at) >= ?";
             params.push(dateStart);
         }
         if (dateEnd) {
-            sql += " AND DATE(created_at, '+8 hours') <= ?";
-            countSql += " AND DATE(created_at, '+8 hours') <= ?";
+            sql += " AND DATE(created_at) <= ?";
+            countSql += " AND DATE(created_at) <= ?";
             params.push(dateEnd);
         }
         
