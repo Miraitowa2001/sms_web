@@ -149,11 +149,14 @@ class MessageHandler {
         this.updateDeviceLastSeen(devId);
 
         // 推送SIM卡状态变更
-        pushService.push('device_status', {
-            devId,
-            status: getMessageTypeName(type),
-            detail: `卡槽${slot}状态变更: ${getMessageTypeName(type)}`
-        });
+        // 过滤掉 202 (注册中) 和 203 (ID已获取) 的推送，避免频繁打扰
+        if (type !== 202 && type !== 203) {
+            pushService.push('device_status', {
+                devId,
+                status: getMessageTypeName(type),
+                detail: `卡槽${slot}状态变更: ${getMessageTypeName(type)}`
+            });
+        }
 
         return { success: true };
     }
