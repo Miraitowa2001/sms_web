@@ -1209,7 +1209,8 @@
                     const pass = document.getElementById('login-pass').value;
                     if (!user || !pass) return App.UI.toast('请输入用户名和密码', 'error');
 
-                    const auth = 'Basic ' + btoa(user + ':' + pass);
+                    // 使用 encodeURIComponent + unescape 处理中文等多字节字符
+                    const auth = 'Basic ' + btoa(unescape(encodeURIComponent(user + ':' + pass)));
                     
                     // 验证登录
                     try {
@@ -1903,76 +1904,7 @@
                         }
                     }
                 },
-                Push: {
-                    currentChannel: 'wecom',
-                    async load() {
-                        // 默认加载企业微信配置
-                        this.switchChannel('wecom');
-                    },
-                    switchChannel(channel, tabEl) {
-                        this.currentChannel = channel;
-                        document.querySelectorAll('.push-channel-config').forEach(el => el.style.display = 'none');
-                        document.getElementById('push-channel-' + channel).style.display = 'block';
-                        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                        tabEl.classList.add('active');
-                    },
-                    async save(channel) {
-                        const data = {};
-                        const webhook = document.getElementById(channel + '-webhook').value.trim();
-                        const enabled = document.getElementById(channel + '-enabled').checked;
-                        
-                        if (channel === 'smtp') {
-                            const host = document.getElementById('smtp-host').value.trim();
-                            const port = document.getElementById('smtp-port').value.trim();
-                            const user = document.getElementById('smtp-user').value.trim();
-                            const pass = document.getElementById('smtp-pass').value.trim();
-                            const to = document.getElementById('smtp-to').value.trim();
-                            const secure = document.getElementById('smtp-secure').checked;
-                            
-                            data.host = host;
-                            data.port = port;
-                            data.user = user;
-                            data.pass = pass;
-                            data.to = to;
-                            data.secure = secure;
-                        }
-                        
-                        if (!webhook && enabled) {
-                            return App.UI.toast('请填写Webhook地址', 'warning');
-                        }
-                        
-                        data.enabled = enabled;
-                        data.webhook = webhook;
-                        
-                        try {
-                            const res = await App.Utils.apiFetch(`/api/push/${channel}`, {
-                                method: 'POST',
-                                body: JSON.stringify(data)
-                            });
-                            if (res.success) {
-                                App.UI.toast('配置保存成功', 'success');
-                            } else {
-                                App.UI.toast('保存失败', 'error');
-                            }
-                        } catch (e) {
-                            App.UI.toast('请求失败: ' + e.message, 'error');
-                        }
-                    },
-                    async test(channel) {
-                        try {
-                            const res = await App.Utils.apiFetch(`/api/push/${channel}/test`, {
-                                method: 'POST'
-                            });
-                            if (res.success) {
-                                App.UI.toast('测试消息发送成功', 'success');
-                            } else {
-                                App.UI.toast('测试失败: ' + res.error, 'error');
-                            }
-                        } catch (e) {
-                            App.UI.toast('请求失败: ' + e.message, 'error');
-                        }
-                    }
-                }
+
             },
             
             // --- 辅助函数 ---
