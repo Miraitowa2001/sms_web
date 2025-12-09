@@ -74,42 +74,103 @@ class PushService {
     }
 
     /**
+     * 获取北京时间字符串
+     */
+    getBeijingTime() {
+        // 强制使用北京时间 (UTC+8)
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const beijingTime = new Date(utc + (3600000 * 8));
+        
+        const pad = n => n < 10 ? '0' + n : n;
+        return `${beijingTime.getFullYear()}-${pad(beijingTime.getMonth() + 1)}-${pad(beijingTime.getDate())} ${pad(beijingTime.getHours())}:${pad(beijingTime.getMinutes())}:${pad(beijingTime.getSeconds())}`;
+    }
+
+    /**
      * 格式化消息
      */
     formatMessage(eventType, data, channel) {
-        const time = new Date().toLocaleString();
+        const time = this.getBeijingTime();
         let title = '';
         let content = '';
         let markdown = '';
+        let feishuCard = null;
+
+        // 辅助函数：生成飞书卡片
+        const createFeishuCard = (title, color, elements) => ({
+            header: { title: { tag: 'plain_text', content: title }, template: color },
+            elements: elements
+        });
 
         switch (eventType) {
             case 'sms':
-                title = '收到新短信';
+                title = '📩 收到新短信';
                 content = `来自: ${data.phone_num}\n内容: ${data.content}\n设备: ${data.dev_id}\n时间: ${time}`;
-                markdown = `**收到新短信**\n> 来自: <font color="info">${data.phone_num}</font>\n> 内容: ${data.content}\n> 设备: ${data.dev_id}\n> 时间: ${time}`;
+                markdown = `### 📩 收到新短信\n` +
+                           `> **来自**: <font color="info">${data.phone_num}</font>\n` +
+                           `> **设备**: <font color="comment">${data.dev_id}</font>\n` +
+                           `> **时间**: ${time}\n` +
+                           `> **内容**: \n> ${data.content}`;
+                feishuCard = createFeishuCard('收到新短信', 'blue', [
+                    { tag: 'div', text: { tag: 'lark_md', content: `**来自**: ${data.phone_num}\n**设备**: ${data.dev_id}\n**时间**: ${time}` } },
+                    { tag: 'hr' },
+                    { tag: 'div', text: { tag: 'lark_md', content: data.content } }
+                ]);
                 break;
+
             case 'call':
-                title = '收到来电';
+                title = '📞 收到来电';
                 content = `来自: ${data.phone_num}\n状态: ${data.call_type}\n设备: ${data.dev_id}\n时间: ${time}`;
-                markdown = `**收到来电**\n> 来自: <font color="info">${data.phone_num}</font>\n> 状态: ${data.call_type}\n> 设备: ${data.dev_id}\n> 时间: ${time}`;
+                markdown = `### 📞 收到来电\n` +
+                           `> **来自**: <font color="info">${data.phone_num}</font>\n` +
+                           `> **状态**: <font color="warning">${data.call_type}</font>\n` +
+                           `> **设备**: <font color="comment">${data.dev_id}</font>\n` +
+                           `> **时间**: ${time}`;
+                feishuCard = createFeishuCard('收到来电', 'orange', [
+                    { tag: 'div', text: { tag: 'lark_md', content: `**来自**: ${data.phone_num}\n**状态**: ${data.call_type}\n**设备**: ${data.dev_id}\n**时间**: ${time}` } }
+                ]);
                 break;
+
             case 'device_status':
-                title = '设备状态更新';
-                content = `设备: ${data.devId}\n状态: ${data.status}\nIP: ${data.ip}\n时间: ${time}`;
-                markdown = `**设备状态更新**\n> 设备: ${data.devId}\n> 状态: <font color="warning">${data.status}</font>\n> IP: ${data.ip}\n> 时间: ${time}`;
+                title = '🤖 设备状态更新';
+                const statusColor = data.status.includes('异常') || data.status.includes('错误') ? 'warning' : 'info';
+                const feishuColor = data.status.includes('异常') || data.status.includes('错误') ? 'red' : 'green';
+                
+                content = `设备: ${data.devId}\n状态: ${data.status}\n详情: ${data.detail || '无'}\n时间: ${time}`;
+                markdown = `### 🤖 设备状态更新\n` +
+                           `> **设备**: <font color="comment">${data.devId}</font>\n` +
+                           `> **状态**: <font color="${statusColor}">${data.status}</font>\n` +
+                           `> **详情**: ${data.detail || '无'}\n` +
+                           `> **时间**: ${time}`;
+                
+                feishuCard = createFeishuCard('设备状态更新', feishuColor, [
+                    { tag: 'div', text: { tag: 'lark_md', content: `**设备**: ${data.devId}\n**状态**: ${data.status}\n**详情**: ${data.detail || '无'}\n**时间**: ${time}` } }
+                ]);
                 break;
+
             default:
                 return null;
         }
 
-        if (channel === 'wecom' || channel === 'feishu') {
+        if (channel === 'wecom') {
             return { title, content, markdown };
+        } else if (channel === 'feishu') {
+            return { title, content, card: feishuCard };
         } else {
             // SMTP HTML format
             const html = `
-                <h3>${title}</h3>
-                <p><strong>时间:</strong> ${time}</p>
-                <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">${content}</pre>
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                    <div style="background: #4f46e5; color: white; padding: 15px 20px;">
+                        <h3 style="margin: 0;">${title}</h3>
+                    </div>
+                    <div style="padding: 20px;">
+                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">时间: ${time}</p>
+                        <pre style="background: #f8fafc; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; color: #334155; border: 1px solid #e2e8f0;">${content}</pre>
+                    </div>
+                    <div style="background: #f8fafc; padding: 10px 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e0e0e0;">
+                        IoT Device Manager
+                    </div>
+                </div>
             `;
             return { title, content, html };
         }
@@ -151,28 +212,9 @@ class PushService {
     async sendFeishu(config, message) {
         if (!config.webhook) return;
         try {
-            // 飞书富文本格式比较复杂，这里使用简单的 text 或 interactive
-            // 为了兼容性，使用 text 加上简单的格式化，或者 interactive card
             const payload = {
                 msg_type: 'interactive',
-                card: {
-                    header: {
-                        title: {
-                            tag: 'plain_text',
-                            content: message.title
-                        },
-                        template: 'blue'
-                    },
-                    elements: [
-                        {
-                            tag: 'div',
-                            text: {
-                                tag: 'lark_md',
-                                content: message.markdown.replace(/\n/g, '\n') // Ensure newlines work
-                            }
-                        }
-                    ]
-                }
+                card: message.card
             };
 
             // 如果有签名校验，需要处理 timestamp 和 sign (这里简化处理，假设用户只配了webhook)

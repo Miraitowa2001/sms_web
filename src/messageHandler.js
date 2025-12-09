@@ -148,6 +148,13 @@ class MessageHandler {
         // 更新设备最后在线时间
         this.updateDeviceLastSeen(devId);
 
+        // 推送SIM卡状态变更
+        pushService.push('device_status', {
+            devId,
+            status: getMessageTypeName(type),
+            detail: `卡槽${slot}状态变更: ${getMessageTypeName(type)}`
+        });
+
         return { success: true };
     }
 
@@ -221,7 +228,17 @@ class MessageHandler {
         this.ensureDeviceExists(devId);
         this.updateDeviceLastSeen(devId);
         
-        console.log(`[System] 设备 ${devId} PING`);
+        // PING 消息过于频繁，通常不推送，除非有特殊需求
+        // 如果需要推送其他系统消息（如开机、重启），可以在这里添加判断
+        if (type !== 998) {
+            pushService.push('device_status', {
+                devId,
+                status: getMessageTypeName(type),
+                detail: `系统消息: ${getMessageTypeName(type)}`
+            });
+        }
+        
+        console.log(`[System] 设备 ${devId} ${getMessageTypeName(type)}`);
         return { success: true };
     }
 
