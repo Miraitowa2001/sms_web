@@ -117,12 +117,25 @@ async function initDatabase() {
     
     // 初始化默认配置
     const channels = ['wecom', 'feishu', 'smtp'];
-    channels.forEach(channel => {
-        const exists = db.prepare('SELECT id FROM push_config WHERE channel = ?').get(channel);
-        if (!exists) {
-            db.run('INSERT INTO push_config (channel, enabled, config, events) VALUES (?, 0, "{}", "[]")', [channel]);
+    for (const channel of channels) {
+        try {
+            // 检查是否存在配置
+            // 注意：sql.js 的 get 需要数组参数
+            const stmt = db.prepare('SELECT id FROM push_config WHERE channel = ?');
+            const exists = stmt.get([channel]);
+            stmt.free(); // 释放语句
+
+            if (!exists) {
+                db.run('INSERT INTO push_config (channel, enabled, config, events) VALUES (?, 0, "{}", "[]")', [channel]);
+                console.log(`[DB] 初始化推送通道: ${channel}`);
+            }
+        } catch (e) {
+            // 忽略唯一约束错误，可能是并发或重复初始化
+            if (!e.message.includes('UNIQUE constraint failed')) {
+                console.error(`[DB] 初始化通道 ${channel} 失败:`, e.message);
+            }
         }
-    });
+    }
 
     console.log('[DB] 数据库初始化完成');
     
@@ -135,9 +148,14 @@ async function initDatabase() {
 // 保存数据库到文件
 function saveDatabase() {
     if (db) {
-        const data = db.export();
-        const buffer = Buffer.from(data);
-        fs.writeFileSync(dbPath, buffer);
+        try {
+            const data = db.export();
+            const buffer = Buffer.from(data);
+            fs.writeFileSync(dbPath, buffer);
+            // console.log('[DB] 数据库已保存'); // 调试用，避免日志过多可注释
+        } catch (e) {
+            console.error('[DB] 保存数据库失败:', e);
+        }
     }
 }
 
