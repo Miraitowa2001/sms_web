@@ -174,7 +174,8 @@ class MessageHandler {
         const imsi = data.imsi || '';
         const msisdn = data.msIsdn || data.msisdn || '';
         const netChannel = data.netCh;
-        const smsTime = data.time || (data.smsTs ? new Date(data.smsTs * 1000).toISOString() : new Date().toISOString());
+        // 统一使用北京时间格式 YYYY-MM-DD HH:mm:ss
+        const smsTime = this.formatTime(data.smsTs || data.time);
         
         console.log(`[SMS] 收到短信: ${phoneNumber} -> ${content}`);
 
@@ -216,7 +217,8 @@ class MessageHandler {
         
         // 计算时间与时长
         // telStartTs, telEndTs 是秒级时间戳
-        const startTime = data.time || (data.telStartTs ? new Date(data.telStartTs * 1000).toISOString() : new Date().toISOString());
+        // 统一使用北京时间格式 YYYY-MM-DD HH:mm:ss
+        const startTime = this.formatTime(data.telStartTs || data.time);
         let duration = 0;
         if (data.telStartTs && data.telEndTs && data.telEndTs > data.telStartTs) {
             duration = data.telEndTs - data.telStartTs;
@@ -306,6 +308,32 @@ class MessageHandler {
     updateSlotInfo(devId, slotInfo) {
         // slotInfo 格式解析 (根据文档格式处理)
         // 具体格式需要根据实际返回数据调整
+    }
+
+    /**
+     * 格式化时间为 YYYY-MM-DD HH:mm:ss (北京时间)
+     */
+    formatTime(time) {
+        let date;
+        if (!time) {
+            date = new Date();
+        } else if (typeof time === 'number') {
+            // 兼容秒级和毫秒级时间戳
+            date = new Date(time < 10000000000 ? time * 1000 : time);
+        } else {
+            date = new Date(time);
+        }
+
+        if (isNaN(date.getTime())) {
+            date = new Date();
+        }
+
+        // 转换为北京时间 (UTC+8)
+        const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+        const beijingTime = new Date(utc + (3600000 * 8));
+        
+        const pad = n => n < 10 ? '0' + n : n;
+        return `${beijingTime.getFullYear()}-${pad(beijingTime.getMonth() + 1)}-${pad(beijingTime.getDate())} ${pad(beijingTime.getHours())}:${pad(beijingTime.getMinutes())}:${pad(beijingTime.getSeconds())}`;
     }
 
     /**
