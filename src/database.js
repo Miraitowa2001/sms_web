@@ -98,7 +98,7 @@ async function initDatabase() {
             phone_num TEXT NOT NULL,
             msg_type INTEGER NOT NULL,
             call_type TEXT NOT NULL,
-            call_time TEXT,
+            start_time TEXT,
             duration INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         )

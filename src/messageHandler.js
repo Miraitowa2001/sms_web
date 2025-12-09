@@ -205,17 +205,30 @@ class MessageHandler {
      * 处理电话消息 (601-642)
      */
     handleCallMessage(type, data) {
-        const { devId, slot, phoneNum, callType, time } = data;
+        // 兼容不同字段名
+        const devId = data.devId;
+        const slot = data.slot;
+        const phoneNumber = data.phoneNum || data.phNum || data.msIsdn || data.msisdn || '';
+        const callType = getMessageTypeName(type);
         
-        console.log(`[Call] 电话消息: ${phoneNum} (${getMessageTypeName(type)})`);
+        // 计算时间与时长
+        // telStartTs, telEndTs 是秒级时间戳
+        const startTime = data.time || (data.telStartTs ? new Date(data.telStartTs * 1000).toISOString() : new Date().toISOString());
+        let duration = 0;
+        if (data.telStartTs && data.telEndTs && data.telEndTs > data.telStartTs) {
+            duration = data.telEndTs - data.telStartTs;
+        }
+        
+        console.log(`[Call] 电话消息: ${phoneNumber} (${callType})`);
 
         // 记录通话
         try {
+            // 注意：数据库字段为 start_time 而非 call_time
             const stmt = db.prepare(`
-                INSERT INTO call_records (dev_id, slot, phone_num, msg_type, call_type, call_time)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO call_records (dev_id, slot, phone_num, msg_type, call_type, start_time, duration)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, slot, phoneNum, type, getMessageTypeName(type), time || new Date().toISOString());
+            stmt.run(devId, slot, phoneNumber || 'unknown', type, callType, startTime, duration);
         } catch (error) {
             console.error('[Call] 记录通话失败:', error);
         }
@@ -224,9 +237,10 @@ class MessageHandler {
         if (type === 601) {
             pushService.push('call', {
                 dev_id: devId,
-                phone_num: phoneNum,
-                call_type: getMessageTypeName(type),
-                slot
+                phone_num: phoneNumber,
+                call_type: callType,
+                slot,
+                net_channel: data.netCh
             });
         }
 
