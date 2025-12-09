@@ -504,8 +504,10 @@
                             <option value="in">接收</option>
                             <option value="out">发送</option>
                         </select>
-                        <input type="date" class="form-control" id="sms-date-start" style="width: 140px;" onchange="App.Modules.SMS.load()">
-                        <input type="date" class="form-control" id="sms-date-end" style="width: 140px;" onchange="App.Modules.SMS.load()">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="date" class="form-control" id="sms-date-start" style="width: 140px;" onchange="App.Modules.SMS.load()">
+                            <input type="date" class="form-control" id="sms-date-end" style="width: 140px;" onchange="App.Modules.SMS.load()">
+                        </div>
                         <button class="btn btn-primary" onclick="App.Modules.SMS.load()">搜索</button>
                     </div>
                     <div class="table-container">
@@ -559,8 +561,10 @@
                             <option value="outgoing">去电</option>
                             <option value="missed">未接</option>
                         </select>
-                        <input type="date" class="form-control" id="call-date-start" style="width: 140px;" onchange="App.Modules.Calls.load()">
-                        <input type="date" class="form-control" id="call-date-end" style="width: 140px;" onchange="App.Modules.Calls.load()">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="date" class="form-control" id="call-date-start" style="width: 140px;" onchange="App.Modules.Calls.load()">
+                            <input type="date" class="form-control" id="call-date-end" style="width: 140px;" onchange="App.Modules.Calls.load()">
+                        </div>
                         <button class="btn btn-primary" onclick="App.Modules.Calls.load()">搜索</button>
                     </div>
                     <div class="table-container">
@@ -615,8 +619,10 @@
                                 <option value="module">通讯模组 (301)</option>
                             </optgroup>
                         </select>
-                        <input type="date" class="form-control" id="log-date-start" style="width: 140px;" onchange="App.Modules.Logs.load()">
-                        <input type="date" class="form-control" id="log-date-end" style="width: 140px;" onchange="App.Modules.Logs.load()">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="date" class="form-control" id="log-date-start" style="width: 140px;" onchange="App.Modules.Logs.load()">
+                            <input type="date" class="form-control" id="log-date-end" style="width: 140px;" onchange="App.Modules.Logs.load()">
+                        </div>
                         <button class="btn btn-primary" onclick="App.Modules.Logs.load()">搜索</button>
                     </div>
                     <div class="table-container">
