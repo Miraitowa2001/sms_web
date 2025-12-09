@@ -10,6 +10,7 @@ const { MESSAGE_TYPES } = require('./constants');
 const crypto = require('crypto');
 const { decryptData } = require('./aesDecrypt');
 const config = require('./config');
+const pushService = require('./pushService');
 
 // ==================== 设备控制指令 API ====================
 
@@ -1478,6 +1479,67 @@ router.get('/message-types', (req, res) => {
         success: true,
         data: MESSAGE_TYPES
     });
+});
+
+// ==================== 消息推送配置 API ====================
+
+// 获取推送配置
+router.get('/push-config', (req, res) => {
+    try {
+        const configs = pushService.getConfigs();
+        res.json(configs);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 保存推送配置
+router.post('/push-config', (req, res) => {
+    const { channel, enabled, config, events } = req.body;
+    if (!channel) {
+        return res.status(400).json({ error: '缺少 channel 参数' });
+    }
+    
+    try {
+        const success = pushService.saveConfig(channel, enabled, config, events);
+        if (success) {
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ error: '保存失败' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 测试推送
+router.post('/push-test', async (req, res) => {
+    const { channel, config } = req.body;
+    
+    try {
+        const testData = {
+            phone_num: '13800138000',
+            content: '这是一条测试消息',
+            dev_id: 'TEST_DEVICE',
+            call_type: 'incoming',
+            status: 'online',
+            ip: '192.168.1.100'
+        };
+
+        const message = pushService.formatMessage('sms', testData, channel);
+        
+        if (channel === 'wecom') {
+            await pushService.sendWeCom(config, message);
+        } else if (channel === 'feishu') {
+            await pushService.sendFeishu(config, message);
+        } else if (channel === 'smtp') {
+            await pushService.sendSmtp(config, message);
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 module.exports = router;

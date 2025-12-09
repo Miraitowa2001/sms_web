@@ -5,6 +5,7 @@
 
 const { dbWrapper: db } = require('./database');
 const { getMessageTypeName, getMessageCategory, DEVICE_STATUS, SIM_STATUS } = require('./constants');
+const pushService = require('./pushService');
 
 class MessageHandler {
     
@@ -90,6 +91,13 @@ class MessageHandler {
             this.updateSlotInfo(devId, slotInfo);
         }
 
+        // 推送设备状态更新
+        pushService.push('device_status', {
+            devId,
+            status: getMessageTypeName(type),
+            ip: ip || 'unknown'
+        });
+
         return { success: true };
     }
 
@@ -147,88 +155,58 @@ class MessageHandler {
      * 处理短信消息 (501-502)
      */
     handleSmsMessage(type, data) {
-        // msgTs 是开发板推送消息的时间（北京时间），smsTs 是短信中心返回的时间（可能是其他时区）
-        // 优先使用 msgTs，因为它的时区是确定的（开发板设置的北京时间）
-        const { devId, slot, phNum, smsBd, smsTs, msgTs, msIsdn } = data;
+        const { devId, slot, phoneNum, content, time } = data;
         
-        // 使用 msgTs（开发板推送时间，北京时间），如果没有则用 smsTs
-        const timestamp = msgTs || smsTs || Math.floor(Date.now() / 1000);
-        
-        if (type === 501) {
-            // 收到新短信
-            console.log(`[SMS] 设备 ${devId} 收到短信, 来自: ${phNum}, msgTs: ${msgTs}, smsTs: ${smsTs}`);
-            
+        console.log(`[SMS] 收到短信: ${phoneNum} -> ${content}`);
+
+        // 记录短信
+        try {
             const stmt = db.prepare(`
-                INSERT INTO sms_records (dev_id, slot, msisdn, phone_num, content, sms_time, direction)
-                VALUES (?, ?, ?, ?, ?, ?, 'in')
+                INSERT INTO sms_records (dev_id, slot, phone_num, content, sms_time, direction)
+                VALUES (?, ?, ?, ?, ?, 'in')
             `);
-            stmt.run(devId, slot || 1, msIsdn || '', phNum || '', smsBd || '', timestamp);
-        } else if (type === 502) {
-            // 短信外发成功
-            console.log(`[SMS] 设备 ${devId} 短信发送成功, 发送至: ${phNum}, msgTs: ${msgTs}, smsTs: ${smsTs}`);
-            
-            const stmt = db.prepare(`
-                INSERT INTO sms_records (dev_id, slot, msisdn, phone_num, content, sms_time, direction)
-                VALUES (?, ?, ?, ?, ?, ?, 'out')
-            `);
-            stmt.run(devId, slot || 1, msIsdn || '', phNum || '', smsBd || '', timestamp);
+            stmt.run(devId, slot, phoneNum, content, time || new Date().toISOString());
+        } catch (error) {
+            console.error('[SMS] 记录短信失败:', error);
         }
 
-        this.ensureDeviceExists(devId);
-        this.updateDeviceLastSeen(devId);
+        // 推送短信通知
+        pushService.push('sms', {
+            dev_id: devId,
+            phone_num: phoneNum,
+            content: content
+        });
 
         return { success: true };
     }
 
     /**
-     * 处理通话消息 (601-642)
+     * 处理电话消息 (601-642)
      */
     handleCallMessage(type, data) {
-        const { devId, slot, phNum, msIsdn, telStartTs, telEndTs } = data;
+        const { devId, slot, phoneNum, callType, time } = data;
         
-        console.log(`[Call] 设备 ${devId} ${getMessageTypeName(type)}, 号码: ${phNum}`);
+        console.log(`[Call] 电话消息: ${phoneNum} (${getMessageTypeName(type)})`);
 
-        // 根据消息类型判断通话类型
-        let callType = 'incoming';
-        if (type >= 620 && type <= 623) {
-            callType = 'outgoing';
-        }
-        
-        // 判断是否为未接来电
-        if (type === 603) {
-            const hasAnswered = db.prepare(`
-                SELECT id FROM call_records 
-                WHERE dev_id = ? AND phone_num = ? AND msg_type = 602
-                AND created_at > datetime('now', '-5 minutes')
-            `).get(devId, phNum);
-            
-            if (!hasAnswered) {
-                callType = 'missed';
-            }
+        // 记录通话
+        try {
+            const stmt = db.prepare(`
+                INSERT INTO call_records (dev_id, slot, phone_num, msg_type, call_type, call_time)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            stmt.run(devId, slot, phoneNum, type, getMessageTypeName(type), time || new Date().toISOString());
+        } catch (error) {
+            console.error('[Call] 记录通话失败:', error);
         }
 
-        // 记录所有通话状态消息(参考短信记录的做法)
-        const duration = telEndTs && telStartTs ? telEndTs - telStartTs : 0;
-        const currentTime = Math.floor(Date.now() / 1000);
-        
-        const stmt = db.prepare(`
-            INSERT INTO call_records (dev_id, slot, msisdn, phone_num, msg_type, call_type, start_time, end_time, duration)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        stmt.run(
-            devId, 
-            slot || 1, 
-            msIsdn || '', 
-            phNum || '', 
-            type,  // 存储消息类型代码
-            callType,
-            telStartTs || currentTime,
-            telEndTs || currentTime,
-            duration || 0
-        );
-
-        this.ensureDeviceExists(devId);
-        this.updateDeviceLastSeen(devId);
+        // 仅在来电振铃(601)时推送通知，避免重复推送
+        if (type === 601) {
+            pushService.push('call', {
+                dev_id: devId,
+                phone_num: phoneNum,
+                call_type: getMessageTypeName(type)
+            });
+        }
 
         return { success: true };
     }

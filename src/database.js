@@ -98,25 +98,31 @@ async function initDatabase() {
             phone_num TEXT NOT NULL,
             msg_type INTEGER NOT NULL,
             call_type TEXT NOT NULL,
-            start_time TEXT,
-            end_time TEXT,
+            call_time TEXT,
             duration INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         )
     `);
-    
-    // 为旧数据添加msg_type列(如果不存在)
-    try {
-        db.run(`ALTER TABLE call_records ADD COLUMN msg_type INTEGER DEFAULT 603`);
-    } catch (e) {
-        // 列已存在,忽略错误
-    }
 
-    // 创建索引
-    db.run(`CREATE INDEX IF NOT EXISTS idx_messages_dev_id ON messages(dev_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_messages_type ON messages(type)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_sms_records_dev_id ON sms_records(dev_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_call_records_dev_id ON call_records(dev_id)`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS push_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel TEXT UNIQUE NOT NULL,
+            enabled INTEGER DEFAULT 0,
+            config TEXT DEFAULT '{}',
+            events TEXT DEFAULT '[]',
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        )
+    `);
+    
+    // 初始化默认配置
+    const channels = ['wecom', 'feishu', 'smtp'];
+    channels.forEach(channel => {
+        const exists = db.prepare('SELECT id FROM push_config WHERE channel = ?').get(channel);
+        if (!exists) {
+            db.run('INSERT INTO push_config (channel, enabled, config, events) VALUES (?, 0, "{}", "[]")', [channel]);
+        }
+    });
 
     console.log('[DB] 数据库初始化完成');
     

@@ -547,6 +547,9 @@
             <div class="nav-item" onclick="App.UI.switchTab('control', this)">
                 <i data-lucide="gamepad-2"></i> 远程控制
             </div>
+            <div class="nav-item" onclick="App.UI.switchTab('push', this)">
+                <i data-lucide="bell"></i> 外部推送
+            </div>
         </div>
 
         <!-- 页面 1: 设备列表 -->
@@ -828,50 +831,190 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- 登录弹窗 -->
-    <div id="login-overlay" class="login-overlay active">
-        <div class="login-card">
-            <div class="login-icon-wrap"><i data-lucide="lock" size="32"></i></div>
-            <h2>管理员登录</h2>
-            <p>请输入您的凭证以访问控制台</p>
-            <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
-                <div>
-                    <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">用户名</label>
-                    <input type="text" id="login-user" class="form-control" placeholder="admin">
+        <!-- 页面 6: 外部推送 -->
+        <div id="panel-push" class="page-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i data-lucide="bell" size="20"></i> 外部推送配置</h2>
+                    <button class="btn btn-secondary" onclick="App.Modules.Push.load()">
+                        <i data-lucide="refresh-cw" size="16"></i> 刷新
+                    </button>
                 </div>
-                <div>
-                    <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">密码</label>
-                    <input type="password" id="login-pass" class="form-control" placeholder="••••••">
+                <div class="card-body">
+                    <div class="nav-tabs" style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <div class="nav-item active" onclick="App.Modules.Push.switchChannel('wecom', this)">
+                            <i data-lucide="message-circle"></i> 企业微信
+                        </div>
+                        <div class="nav-item" onclick="App.Modules.Push.switchChannel('feishu', this)">
+                            <i data-lucide="send"></i> 飞书
+                        </div>
+                        <div class="nav-item" onclick="App.Modules.Push.switchChannel('smtp', this)">
+                            <i data-lucide="mail"></i> SMTP邮件
+                        </div>
+                    </div>
+
+                    <!-- 企业微信配置 -->
+                    <div id="push-channel-wecom" class="push-channel-config">
+                        <div style="max-width: 600px;">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
+                                    <input type="checkbox" id="wecom-enabled"> 启用企业微信推送
+                                </label>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Webhook 地址</label>
+                                <input type="text" id="wecom-webhook" class="form-control" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...">
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">推送事件</label>
+                                <div style="display: flex; gap: 16px;">
+                                    <label><input type="checkbox" name="wecom-events" value="sms"> 收到短信</label>
+                                    <label><input type="checkbox" name="wecom-events" value="call"> 收到来电</label>
+                                    <label><input type="checkbox" name="wecom-events" value="device_status"> 设备状态更新</label>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                                <button class="btn btn-primary" onclick="App.Modules.Push.save('wecom')">保存配置</button>
+                                <button class="btn btn-secondary" onclick="App.Modules.Push.test('wecom')">发送测试消息</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 飞书配置 -->
+                    <div id="push-channel-feishu" class="push-channel-config" style="display: none;">
+                        <div style="max-width: 600px;">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
+                                    <input type="checkbox" id="feishu-enabled"> 启用飞书推送
+                                </label>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Webhook 地址</label>
+                                <input type="text" id="feishu-webhook" class="form-control" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">推送事件</label>
+                                <div style="display: flex; gap: 16px;">
+                                    <label><input type="checkbox" name="feishu-events" value="sms"> 收到短信</label>
+                                    <label><input type="checkbox" name="feishu-events" value="call"> 收到来电</label>
+                                    <label><input type="checkbox" name="feishu-events" value="device_status"> 设备状态更新</label>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                                <button class="btn btn-primary" onclick="App.Modules.Push.save('feishu')">保存配置</button>
+                                <button class="btn btn-secondary" onclick="App.Modules.Push.test('feishu')">发送测试消息</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMTP配置 -->
+                    <div id="push-channel-smtp" class="push-channel-config" style="display: none;">
+                        <div style="max-width: 600px;">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
+                                    <input type="checkbox" id="smtp-enabled"> 启用SMTP邮件推送
+                                </label>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">SMTP 服务器</label>
+                                    <input type="text" id="smtp-host" class="form-control" placeholder="smtp.example.com">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">端口</label>
+                                    <input type="number" id="smtp-port" class="form-control" placeholder="465">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">用户名/邮箱</label>
+                                    <input type="text" id="smtp-user" class="form-control" placeholder="user@example.com">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">密码/授权码</label>
+                                    <input type="password" id="smtp-pass" class="form-control" placeholder="password">
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">接收邮箱</label>
+                                <input type="text" id="smtp-to" class="form-control" placeholder="receiver@example.com">
+                            </div>
+
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="smtp-secure" checked> 使用 SSL/TLS (端口 465 通常需要)
+                                </label>
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">推送事件</label>
+                                <div style="display: flex; gap: 16px;">
+                                    <label><input type="checkbox" name="smtp-events" value="sms"> 收到短信</label>
+                                    <label><input type="checkbox" name="smtp-events" value="call"> 收到来电</label>
+                                    <label><input type="checkbox" name="smtp-events" value="device_status"> 设备状态更新</label>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                                <button class="btn btn-primary" onclick="App.Modules.Push.save('smtp')">保存配置</button>
+                                <button class="btn btn-secondary" onclick="App.Modules.Push.test('smtp')">发送测试消息</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="App.Auth.login()" style="justify-content: center; padding: 12px;">
-                    登录系统 <i data-lucide="arrow-right" size="16"></i>
-                </button>
             </div>
         </div>
-    </div>
 
-    <!-- 添加设备弹窗 -->
-    <div id="modal-add-device" class="login-overlay">
-        <div class="login-card" style="text-align: left; max-width: 450px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="font-size: 18px; font-weight: 600;">添加新设备</h3>
-                <button onclick="App.UI.hideModal('modal-add-device')" style="background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                <input type="text" id="add-dev-id" class="form-control" placeholder="设备ID (必填)">
-                <input type="text" id="add-dev-name" class="form-control" placeholder="设备名称">
-                <input type="text" id="add-dev-ip" class="form-control" placeholder="IP地址">
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="App.UI.hideModal('modal-add-device')">取消</button>
-                    <button class="btn btn-primary" onclick="App.Modules.Devices.add()">保存</button>
+        <!-- 登录遮罩 -->
+        <div id="login-overlay" class="login-overlay active">
+            <div class="login-card">
+                <div class="login-icon-wrap"><i data-lucide="lock" size="32"></i></div>
+                <h2>管理员登录</h2>
+                <p>请输入您的凭证以访问控制台</p>
+                <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">用户名</label>
+                        <input type="text" id="login-user" class="form-control" placeholder="admin">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">密码</label>
+                        <input type="password" id="login-pass" class="form-control" placeholder="••••••">
+                    </div>
+                    <button class="btn btn-primary" onclick="App.Auth.login()" style="justify-content: center; padding: 12px;">
+                        登录系统 <i data-lucide="arrow-right" size="16"></i>
+                    </button>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- 添加设备弹窗 -->
+        <div id="modal-add-device" class="login-overlay">
+            <div class="login-card" style="text-align: left; max-width: 450px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="font-size: 18px; font-weight: 600;">添加新设备</h3>
+                    <button onclick="App.UI.hideModal('modal-add-device')" style="background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <input type="text" id="add-dev-id" class="form-control" placeholder="设备ID (必填)">
+                    <input type="text" id="add-dev-name" class="form-control" placeholder="设备名称">
+                    <input type="text" id="add-dev-ip" class="form-control" placeholder="IP地址">
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                        <button class="btn btn-secondary" onclick="App.UI.hideModal('modal-add-device')">取消</button>
+                        <button class="btn btn-primary" onclick="App.Modules.Devices.add()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     
-    <div id="toast-container" class="toast-container"></div>
+        <div id="toast-container" class="toast-container"></div>
 
     <script>
         // 初始化 Lucide 图标
@@ -1103,6 +1246,7 @@
                     if(panelId === 'sms') App.Modules.SMS.load();
                     if(panelId === 'calls') App.Modules.Calls.load();
                     if(panelId === 'logs') App.Modules.Logs.load();
+                    if(panelId === 'push') App.Modules.Push.load();
                 },
                 toggleSelectAll(source, tableId) {
                     const checkboxes = document.querySelectorAll(`${tableId} tbody input[type="checkbox"]`);
@@ -1142,6 +1286,104 @@
 
             // --- 业务模块 ---
             Modules: {
+                Push: {
+                    async load() {
+                        try {
+                            const data = await App.Utils.apiFetch('/api/push-config');
+                            if (Array.isArray(data)) {
+                                data.forEach(config => {
+                                    this.fillConfig(config);
+                                });
+                            }
+                        } catch (e) {
+                            App.UI.toast('加载推送配置失败', 'error');
+                        }
+                    },
+                    fillConfig(config) {
+                        const channel = config.channel;
+                        const enabled = document.getElementById(`${channel}-enabled`);
+                        if (enabled) enabled.checked = config.enabled;
+
+                        if (channel === 'wecom' || channel === 'feishu') {
+                            const webhook = document.getElementById(`${channel}-webhook`);
+                            if (webhook) webhook.value = config.config.webhook || '';
+                        } else if (channel === 'smtp') {
+                            document.getElementById('smtp-host').value = config.config.host || '';
+                            document.getElementById('smtp-port').value = config.config.port || '';
+                            document.getElementById('smtp-user').value = config.config.user || '';
+                            document.getElementById('smtp-pass').value = config.config.pass || '';
+                            document.getElementById('smtp-to').value = config.config.to || '';
+                            document.getElementById('smtp-secure').checked = config.config.secure !== false;
+                        }
+
+                        const events = config.events || [];
+                        document.querySelectorAll(`input[name="${channel}-events"]`).forEach(cb => {
+                            cb.checked = events.includes(cb.value);
+                        });
+                    },
+                    getConfig(channel) {
+                        const enabled = document.getElementById(`${channel}-enabled`).checked;
+                        const events = Array.from(document.querySelectorAll(`input[name="${channel}-events"]:checked`)).map(cb => cb.value);
+                        let config = {};
+
+                        if (channel === 'wecom' || channel === 'feishu') {
+                            config.webhook = document.getElementById(`${channel}-webhook`).value.trim();
+                        } else if (channel === 'smtp') {
+                            config.host = document.getElementById('smtp-host').value.trim();
+                            config.port = parseInt(document.getElementById('smtp-port').value.trim()) || 465;
+                            config.user = document.getElementById('smtp-user').value.trim();
+                            config.pass = document.getElementById('smtp-pass').value.trim();
+                            config.to = document.getElementById('smtp-to').value.trim();
+                            config.secure = document.getElementById('smtp-secure').checked;
+                        }
+
+                        return { channel, enabled, config, events };
+                    },
+                    async save(channel) {
+                        const data = this.getConfig(channel);
+                        try {
+                            const res = await App.Utils.apiFetch('/api/push-config', {
+                                method: 'POST',
+                                body: JSON.stringify(data)
+                            });
+                            if (res.success) {
+                                App.UI.toast('配置保存成功', 'success');
+                            } else {
+                                App.UI.toast('保存失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('保存失败: ' + e.message, 'error');
+                        }
+                    },
+                    async test(channel) {
+                        const data = this.getConfig(channel);
+                        if (!data.enabled) {
+                            if (!confirm('该通道未启用，确定要发送测试消息吗？')) return;
+                        }
+                        
+                        App.UI.toast('正在发送测试消息...', 'info');
+                        try {
+                            const res = await App.Utils.apiFetch('/api/push-test', {
+                                method: 'POST',
+                                body: JSON.stringify({ channel, config: data.config })
+                            });
+                            if (res.success) {
+                                App.UI.toast('测试消息发送成功', 'success');
+                            } else {
+                                App.UI.toast('发送失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('发送失败: ' + e.message, 'error');
+                        }
+                    },
+                    switchChannel(channel, tabEl) {
+                        document.querySelectorAll('.push-channel-config').forEach(el => el.style.display = 'none');
+                        document.getElementById(`push-channel-${channel}`).style.display = 'block';
+                        
+                        tabEl.parentElement.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                        tabEl.classList.add('active');
+                    }
+                },
                 Stats: {
                     async load() {
                         try {
@@ -1244,7 +1486,7 @@
                             const res = await App.Utils.apiFetch('/api/devices', {
                                 method: 'POST',
                                 body: JSON.stringify({ devId, name, ip })
-                            });
+                                                       });
                             if (res.success) {
                                 App.UI.toast('设备添加成功', 'success');
                                 App.UI.hideModal('modal-add-device');
@@ -1658,6 +1900,76 @@
                             resultBox.style.color = '#fecaca';
                             resultBox.textContent = `❌ 执行失败: ${e.message}`;
                             App.UI.toast('指令发送失败', 'error');
+                        }
+                    }
+                },
+                Push: {
+                    currentChannel: 'wecom',
+                    async load() {
+                        // 默认加载企业微信配置
+                        this.switchChannel('wecom');
+                    },
+                    switchChannel(channel, tabEl) {
+                        this.currentChannel = channel;
+                        document.querySelectorAll('.push-channel-config').forEach(el => el.style.display = 'none');
+                        document.getElementById('push-channel-' + channel).style.display = 'block';
+                        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                        tabEl.classList.add('active');
+                    },
+                    async save(channel) {
+                        const data = {};
+                        const webhook = document.getElementById(channel + '-webhook').value.trim();
+                        const enabled = document.getElementById(channel + '-enabled').checked;
+                        
+                        if (channel === 'smtp') {
+                            const host = document.getElementById('smtp-host').value.trim();
+                            const port = document.getElementById('smtp-port').value.trim();
+                            const user = document.getElementById('smtp-user').value.trim();
+                            const pass = document.getElementById('smtp-pass').value.trim();
+                            const to = document.getElementById('smtp-to').value.trim();
+                            const secure = document.getElementById('smtp-secure').checked;
+                            
+                            data.host = host;
+                            data.port = port;
+                            data.user = user;
+                            data.pass = pass;
+                            data.to = to;
+                            data.secure = secure;
+                        }
+                        
+                        if (!webhook && enabled) {
+                            return App.UI.toast('请填写Webhook地址', 'warning');
+                        }
+                        
+                        data.enabled = enabled;
+                        data.webhook = webhook;
+                        
+                        try {
+                            const res = await App.Utils.apiFetch(`/api/push/${channel}`, {
+                                method: 'POST',
+                                body: JSON.stringify(data)
+                            });
+                            if (res.success) {
+                                App.UI.toast('配置保存成功', 'success');
+                            } else {
+                                App.UI.toast('保存失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败: ' + e.message, 'error');
+                        }
+                    },
+                    async test(channel) {
+                        try {
+                            const res = await App.Utils.apiFetch(`/api/push/${channel}/test`, {
+                                method: 'POST'
+                            });
+                            if (res.success) {
+                                App.UI.toast('测试消息发送成功', 'success');
+                            } else {
+                                App.UI.toast('测试失败: ' + res.error, 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败: ' + e.message, 'error');
                         }
                     }
                 }
