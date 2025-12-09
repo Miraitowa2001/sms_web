@@ -248,11 +248,9 @@ class PushService {
             const html = `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
                     <div style="background: #4f46e5; color: white; padding: 15px 20px;">
-                        <h3 style="margin: 0;">${title}</h3>
                     </div>
                     <div style="padding: 20px;">
-                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">时间: ${time}</p>
-                        <pre style="background: #f8fafc; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; color: #334155; border: 1px solid #e2e8f0;">${content}</pre>
+                        <pre style="background: #f8fafc; padding: 15px; border-radius: 6px; font-family: sans-serif; white-space: pre-wrap; color: #334155; border: 1px solid #e2e8f0;">${content}</pre>
                     </div>
                     <div style="background: #f8fafc; padding: 10px 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e0e0e0;">
                         IoT Device Manager
