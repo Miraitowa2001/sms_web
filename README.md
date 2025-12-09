@@ -26,7 +26,32 @@
 | 205 | SIM卡弹出 | 998 | PING心跳 |
 | 209 | SIM卡异常 | ... | ... |
 
-## 快速开始
+## 🚀 快速部署 (推荐)
+
+本项目支持 Docker 一键部署，无需安装 Node.js 环境。
+
+### Windows 用户
+双击运行项目根目录下的 `start.bat` 脚本即可。
+
+### Linux / macOS 用户
+在终端运行：
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+服务启动后，访问管理界面：
+- 地址: `http://localhost:36001`
+- 默认账号: `admin`
+- 默认密码: 请查看 `.env` 文件 (首次运行会自动生成)
+
+> 更多 Docker 配置详情（如数据持久化、故障排查），请参阅 [Docker 部署指南](DOCKER_DEPLOY.md)。
+
+---
+
+## 🛠️ 手动部署 (开发环境)
+
+如果您需要修改代码或进行二次开发，可以使用 Node.js 直接运行。
 
 ### 1. 安装依赖
 
@@ -50,17 +75,20 @@ npm run dev
 
 在开发板后台管理页面中，配置接口信息：
 
-- **接口地址**: `http://你的服务器IP:3000/push`
+- **接口地址**: 
+  - Docker部署: `http://你的服务器IP:36001/push`
+  - 手动部署: `http://你的服务器IP:3000/push`
 - **HTTP请求方式**: `POST`
 - **Content-Type**: `application/json`（推荐）
 
 如果使用 Form 格式：
-- **接口地址**: `http://你的服务器IP:3000/push-form`
+- **接口地址**: `.../push-form`
 - **Content-Type**: `application/x-www-form-urlencoded`
 
 ### 4. 访问管理界面
 
-打开浏览器访问: `http://localhost:3000`
+- Docker部署: `http://localhost:36001`
+- 手动部署: `http://localhost:3000`
 
 ## API 文档
 
