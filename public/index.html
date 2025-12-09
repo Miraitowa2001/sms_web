@@ -384,6 +384,35 @@
             /* 特殊处理复选框列 */
             td:has(input[type="checkbox"]) { padding-left: 0; justify-content: flex-start; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; min-height: auto; }
             td:has(input[type="checkbox"])::before { content: none; }
+
+            /* 优化：将短字段并排显示 (卡槽、方向、类型等) */
+            td[data-label="卡槽"], 
+            td[data-label="方向"],
+            td[data-label="消息类型"],
+            td[data-label="通话分类"] {
+                display: inline-flex;
+                width: 50%;
+                box-sizing: border-box;
+                padding: 4px 0;
+                justify-content: flex-start;
+                border-bottom: none;
+                float: left;
+            }
+            /* 清除浮动 */
+            tr::after { content: ""; display: table; clear: both; }
+
+            /* 调整并排单元格的 label */
+            td[data-label="卡槽"]::before, 
+            td[data-label="方向"]::before,
+            td[data-label="消息类型"]::before,
+            td[data-label="通话分类"]::before {
+                position: static;
+                transform: none;
+                width: auto;
+                margin-right: 6px;
+                font-weight: normal;
+                color: var(--text-light);
+            }
             
             /* 内容溢出处理 */
             .device-id { word-break: break-all; font-family: monospace; font-size: 13px; }
@@ -398,6 +427,7 @@
                 color: #334155;
                 background: #f8fafc;
                 padding: 8px;
+                border: 1px solid var(--border-color); /* 增加外框线 */
                 border-radius: 4px;
                 margin-top: 4px;
             }
