@@ -198,8 +198,8 @@
             position: absolute;
             right: 15px;
             top: 15px;
-            color: var(--primary-light);
-            opacity: 0.5;
+            color: var(--primary);
+            opacity: 0.1;
             width: 48px; height: 48px;
         }
         .stat-label { color: var(--text-secondary); font-size: 13px; margin-bottom: 4px; }
@@ -308,63 +308,95 @@
 
         /* ==================== 4. 移动端适配 (Mobile Optimization) ==================== */
         @media (max-width: 768px) {
-            .app-header { padding: 0 16px; height: 56px; }
-            .header-title-text { display: none; } /* 仅显示 Logo 图标 */
-            .container { margin: 16px auto; padding: 0 16px; }
+            .app-header { padding: 0 12px; height: 50px; }
+            .header-title-text { display: none; }
+            .container { margin: 12px auto; padding: 0 12px; }
             
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-            .stat-card:first-child { grid-column: 1 / -1; } /* 第一个卡片占满一行 */
-            .stat-value { font-size: 24px; }
+            /* 统计卡片更紧凑 */
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+            .stat-card { padding: 12px; min-height: 80px; }
+            .stat-card:first-child { grid-column: 1 / -1; } 
+            .stat-value { font-size: 22px; margin-bottom: 4px; }
+            .stat-label { font-size: 12px; }
+            .stat-card-icon { width: 36px; height: 36px; right: 10px; top: 10px; }
             
-            .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-            .card-header > div { width: 100%; display: flex; gap: 8px; }
-            .card-header .btn { flex: 1; }
+            /* 头部更紧凑，尝试一行显示 */
+            .card-header { 
+                padding: 10px 12px; 
+                flex-direction: row; 
+                align-items: center; 
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .card-header h2 { font-size: 15px; white-space: nowrap; }
+            .card-header > div { width: auto; gap: 6px; }
+            .card-header .btn { 
+                padding: 6px; 
+                width: 32px; 
+                height: 32px; 
+                justify-content: center; 
+            }
+            .card-header .btn span { display: none; } /* 隐藏按钮文字，只留图标 */
             
-            .search-box { flex-direction: column; }
-            .search-box > * { width: 100% !important; }
+            .card-body { padding: 12px; }
 
-            /* 移动端表格卡片化 */
+            /* 搜索框紧凑布局 */
+            .search-box { gap: 8px; margin-bottom: 12px; }
+            .form-control { padding: 6px 8px; font-size: 13px; height: 34px; }
+            .search-box .btn { width: 100%; height: 34px; margin-top: 4px; }
+
+            /* 移动端表格卡片化优化 */
             table, thead, tbody, th, td, tr { display: block; }
             thead tr { position: absolute; top: -9999px; left: -9999px; }
             tr { 
                 background: white; 
                 border: 1px solid var(--border-color); 
-                border-radius: 12px; 
-                margin-bottom: 16px; 
+                border-radius: 8px; 
+                margin-bottom: 10px; 
                 box-shadow: var(--shadow-sm); 
-                padding: 12px;
+                padding: 10px;
             }
             td { 
-                border: none; position: relative; padding: 8px 0 8px 40%; 
-                text-align: right; min-height: 36px; display: flex; align-items: center; justify-content: flex-end;
+                border: none; position: relative; padding: 4px 0 4px 30%; 
+                text-align: right; min-height: 28px; display: flex; align-items: center; justify-content: flex-end;
+                font-size: 13px;
             }
             td::before { 
                 position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-                width: 35%; white-space: nowrap; font-weight: 600; color: var(--text-secondary); text-align: left;
+                width: 28%; white-space: nowrap; font-weight: 600; color: var(--text-secondary); text-align: left;
                 content: attr(data-label); 
+                font-size: 12px;
             }
             /* 特殊处理复选框列 */
-            td:has(input[type="checkbox"]) { padding-left: 0; justify-content: flex-start; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px; }
+            td:has(input[type="checkbox"]) { padding-left: 0; justify-content: flex-start; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; min-height: auto; }
             td:has(input[type="checkbox"])::before { content: none; }
             
             /* 内容溢出处理 */
-            .device-id { word-break: break-all; font-family: monospace; }
+            .device-id { word-break: break-all; font-family: monospace; font-size: 13px; }
             
             /* 短信内容特殊处理 */
             .sms-content {
                 white-space: normal;
                 max-width: 100%;
                 text-align: left;
+                font-size: 13px;
+                line-height: 1.4;
+                color: #334155;
+                background: #f8fafc;
+                padding: 8px;
+                border-radius: 4px;
+                margin-top: 4px;
             }
             td:has(.sms-content) {
                 display: block;
                 padding-left: 0;
                 text-align: left;
+                height: auto;
             }
             td:has(.sms-content)::before {
                 position: static;
                 display: block;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
                 transform: none;
             }
         }
@@ -493,22 +525,28 @@
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <input type="text" class="form-control" id="sms-search" placeholder="搜索号码..." style="flex:1;">
-                        <select class="form-control" id="sms-slot" style="width: 100px;" onchange="App.Modules.SMS.load()">
-                            <option value="">全部卡槽</option>
-                            <option value="1">卡槽1</option>
-                            <option value="2">卡槽2</option>
-                        </select>
-                        <select class="form-control" id="sms-direction" style="width: 120px;" onchange="App.Modules.SMS.load()">
-                            <option value="">全部方向</option>
-                            <option value="in">接收</option>
-                            <option value="out">发送</option>
-                        </select>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="date" class="form-control" id="sms-date-start" style="width: 140px;" onchange="App.Modules.SMS.load()">
-                            <input type="date" class="form-control" id="sms-date-end" style="width: 140px;" onchange="App.Modules.SMS.load()">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="text" class="form-control" id="sms-search" placeholder="搜索号码..." style="flex:1;">
+                            <button class="btn btn-primary btn-icon" onclick="App.Modules.SMS.load()" style="width: auto; margin-top: 0;">
+                                <i data-lucide="search" size="18"></i>
+                            </button>
                         </div>
-                        <button class="btn btn-primary" onclick="App.Modules.SMS.load()">搜索</button>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <select class="form-control" id="sms-slot" style="flex: 1;" onchange="App.Modules.SMS.load()">
+                                <option value="">全部卡槽</option>
+                                <option value="1">卡槽1</option>
+                                <option value="2">卡槽2</option>
+                            </select>
+                            <select class="form-control" id="sms-direction" style="flex: 1;" onchange="App.Modules.SMS.load()">
+                                <option value="">全部方向</option>
+                                <option value="in">接收</option>
+                                <option value="out">发送</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="date" class="form-control" id="sms-date-start" style="flex: 1;" onchange="App.Modules.SMS.load()">
+                            <input type="date" class="form-control" id="sms-date-end" style="flex: 1;" onchange="App.Modules.SMS.load()">
+                        </div>
                     </div>
                     <div class="table-container">
                         <table id="table-sms">
@@ -549,23 +587,29 @@
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <input type="text" class="form-control" id="call-search" placeholder="搜索号码..." style="flex:1;">
-                        <select class="form-control" id="call-slot" style="width: 100px;" onchange="App.Modules.Calls.load()">
-                            <option value="">全部卡槽</option>
-                            <option value="1">卡槽1</option>
-                            <option value="2">卡槽2</option>
-                        </select>
-                        <select class="form-control" id="call-type" style="width: 120px;" onchange="App.Modules.Calls.load()">
-                            <option value="">全部类型</option>
-                            <option value="incoming">来电</option>
-                            <option value="outgoing">去电</option>
-                            <option value="missed">未接</option>
-                        </select>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="date" class="form-control" id="call-date-start" style="width: 140px;" onchange="App.Modules.Calls.load()">
-                            <input type="date" class="form-control" id="call-date-end" style="width: 140px;" onchange="App.Modules.Calls.load()">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="text" class="form-control" id="call-search" placeholder="搜索号码..." style="flex:1;">
+                            <button class="btn btn-primary btn-icon" onclick="App.Modules.Calls.load()" style="width: auto; margin-top: 0;">
+                                <i data-lucide="search" size="18"></i>
+                            </button>
                         </div>
-                        <button class="btn btn-primary" onclick="App.Modules.Calls.load()">搜索</button>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <select class="form-control" id="call-slot" style="flex: 1;" onchange="App.Modules.Calls.load()">
+                                <option value="">全部卡槽</option>
+                                <option value="1">卡槽1</option>
+                                <option value="2">卡槽2</option>
+                            </select>
+                            <select class="form-control" id="call-type" style="flex: 1;" onchange="App.Modules.Calls.load()">
+                                <option value="">全部类型</option>
+                                <option value="incoming">来电</option>
+                                <option value="outgoing">去电</option>
+                                <option value="missed">未接</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="date" class="form-control" id="call-date-start" style="flex: 1;" onchange="App.Modules.Calls.load()">
+                            <input type="date" class="form-control" id="call-date-end" style="flex: 1;" onchange="App.Modules.Calls.load()">
+                        </div>
                     </div>
                     <div class="table-container">
                         <table id="table-calls">
@@ -607,23 +651,27 @@
                 </div>
                 <div class="card-body">
                     <div class="search-box">
-                        <select class="form-control" id="log-msg-type" style="flex:1;" onchange="App.Modules.Logs.load()">
-                            <option value="">全部消息类型</option>
-                            <optgroup label="消息大类">
-                                <option value="network">联网消息 (100-102)</option>
-                                <option value="sim">SIM卡消息 (202-209)</option>
-                                <option value="sms">短信消息 (501-502)</option>
-                                <option value="call">电话消息 (601-642)</option>
-                                <option value="call_ctrl">电话控制回应 (681-689)</option>
-                                <option value="command">命令应答 (401-402)</option>
-                                <option value="module">通讯模组 (301)</option>
-                            </optgroup>
-                        </select>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="date" class="form-control" id="log-date-start" style="width: 140px;" onchange="App.Modules.Logs.load()">
-                            <input type="date" class="form-control" id="log-date-end" style="width: 140px;" onchange="App.Modules.Logs.load()">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <select class="form-control" id="log-msg-type" style="flex:1;" onchange="App.Modules.Logs.load()">
+                                <option value="">全部消息类型</option>
+                                <optgroup label="消息大类">
+                                    <option value="network">联网消息 (100-102)</option>
+                                    <option value="sim">SIM卡消息 (202-209)</option>
+                                    <option value="sms">短信消息 (501-502)</option>
+                                    <option value="call">电话消息 (601-642)</option>
+                                    <option value="call_ctrl">电话控制回应 (681-689)</option>
+                                    <option value="command">命令应答 (401-402)</option>
+                                    <option value="module">通讯模组 (301)</option>
+                                </optgroup>
+                            </select>
+                            <button class="btn btn-primary btn-icon" onclick="App.Modules.Logs.load()" style="width: auto; margin-top: 0;">
+                                <i data-lucide="search" size="18"></i>
+                            </button>
                         </div>
-                        <button class="btn btn-primary" onclick="App.Modules.Logs.load()">搜索</button>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="date" class="form-control" id="log-date-start" style="flex: 1;" onchange="App.Modules.Logs.load()">
+                            <input type="date" class="form-control" id="log-date-end" style="flex: 1;" onchange="App.Modules.Logs.load()">
+                        </div>
                     </div>
                     <div class="table-container">
                         <table id="table-logs">
