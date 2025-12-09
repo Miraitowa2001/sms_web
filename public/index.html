@@ -323,18 +323,32 @@
             /* 头部更紧凑，尝试一行显示 */
             .card-header { 
                 padding: 10px 12px; 
-                flex-direction: row; 
-                align-items: center; 
-                justify-content: space-between;
+                flex-direction: row !important; 
+                align-items: center !important; 
+                justify-content: space-between !important;
                 gap: 8px;
+                min-height: 52px;
             }
-            .card-header h2 { font-size: 15px; white-space: nowrap; }
-            .card-header > div { width: auto; gap: 6px; }
+            .card-header h2 { 
+                font-size: 15px; 
+                white-space: nowrap; 
+                margin: 0;
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .card-header > div { 
+                width: auto !important; 
+                display: flex !important; 
+                gap: 8px !important; 
+                align-items: center !important;
+            }
             .card-header .btn { 
-                padding: 6px; 
+                padding: 0; 
                 width: 32px; 
                 height: 32px; 
                 justify-content: center; 
+                flex-shrink: 0;
             }
             .card-header .btn span { display: none; } /* 隐藏按钮文字，只留图标 */
             
