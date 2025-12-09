@@ -167,6 +167,10 @@ class MessageHandler {
         const slot = data.slot;
         const phoneNumber = data.phoneNum || data.phNum || data.msIsdn || data.msisdn || '';
         const content = data.content || data.smsBd || '';
+        const iccid = data.iccId || data.iccid || '';
+        const imsi = data.imsi || '';
+        const msisdn = data.msIsdn || data.msisdn || '';
+        const netChannel = data.netCh;
         const smsTime = data.time || (data.smsTs ? new Date(data.smsTs * 1000).toISOString() : new Date().toISOString());
         
         console.log(`[SMS] 收到短信: ${phoneNumber} -> ${content}`);
@@ -186,7 +190,12 @@ class MessageHandler {
         pushService.push('sms', {
             dev_id: devId,
             phone_num: phoneNumber,
-            content: content
+            content: content,
+            slot,
+            iccid,
+            imsi,
+            msisdn,
+            net_channel: netChannel
         });
 
         return { success: true };
@@ -216,7 +225,8 @@ class MessageHandler {
             pushService.push('call', {
                 dev_id: devId,
                 phone_num: phoneNum,
-                call_type: getMessageTypeName(type)
+                call_type: getMessageTypeName(type),
+                slot
             });
         }
 

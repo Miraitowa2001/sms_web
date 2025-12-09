@@ -59,6 +59,19 @@ class PushService {
      * @param {object} data - 消息数据
      */
     async push(eventType, data) {
+        // 补充设备名称
+        const devId = data.dev_id || data.devId;
+        if (devId) {
+            try {
+                const device = db.prepare('SELECT name FROM devices WHERE dev_id = ?').get(devId);
+                if (device && device.name) {
+                    data.devName = device.name;
+                }
+            } catch (e) {
+                // 忽略查询错误
+            }
+        }
+
         const configs = this.getConfigs();
         const promises = [];
 
@@ -101,7 +114,12 @@ class PushService {
      * 格式化消息
      */
     formatMessage(eventType, data, channel) {
+        // 标准化字段
+        const devId = data.dev_id || data.devId || 'unknown';
+        const devName = data.devName ? `${data.devName} (${devId})` : devId;
+        const slot = data.slot ? `卡${data.slot}` : '未知卡槽';
         const time = this.getBeijingTime();
+        
         let title = '';
         let content = '';
         let markdown = '';
@@ -116,29 +134,53 @@ class PushService {
         switch (eventType) {
             case 'sms':
                 title = '📩 收到新短信';
-                content = `来自: ${data.phone_num}\n内容: ${data.content}\n设备: ${data.dev_id}\n时间: ${time}`;
+                content = `设备: ${devName}\n卡槽: ${slot}\n来自: ${data.phone_num}\n时间: ${time}\n内容: ${data.content}`;
+                
                 markdown = `### 📩 收到新短信\n` +
+                           `> **设备**: <font color="comment">${devName}</font>\n` +
+                           `> **卡槽**: <font color="comment">${slot}</font>\n` +
                            `> **来自**: <font color="info">${data.phone_num}</font>\n` +
-                           `> **设备**: <font color="comment">${data.dev_id}</font>\n` +
                            `> **时间**: ${time}\n` +
                            `> **内容**: \n> ${data.content}`;
+                
                 feishuCard = createFeishuCard('收到新短信', 'blue', [
-                    { tag: 'div', text: { tag: 'lark_md', content: `**来自**: ${data.phone_num}\n**设备**: ${data.dev_id}\n**时间**: ${time}` } },
+                    { 
+                        tag: 'div', 
+                        text: { 
+                            tag: 'lark_md', 
+                            content: `**设备**: ${devName}\n**卡槽**: ${slot}\n**来自**: ${data.phone_num}\n**时间**: ${time}` 
+                        } 
+                    },
                     { tag: 'hr' },
-                    { tag: 'div', text: { tag: 'lark_md', content: data.content } }
+                    { 
+                        tag: 'div', 
+                        text: { 
+                            tag: 'lark_md', 
+                            content: data.content 
+                        } 
+                    }
                 ]);
                 break;
 
             case 'call':
                 title = '📞 收到来电';
-                content = `来自: ${data.phone_num}\n状态: ${data.call_type}\n设备: ${data.dev_id}\n时间: ${time}`;
+                content = `设备: ${devName}\n卡槽: ${slot}\n来自: ${data.phone_num}\n状态: ${data.call_type}\n时间: ${time}`;
+                
                 markdown = `### 📞 收到来电\n` +
+                           `> **设备**: <font color="comment">${devName}</font>\n` +
+                           `> **卡槽**: <font color="comment">${slot}</font>\n` +
                            `> **来自**: <font color="info">${data.phone_num}</font>\n` +
                            `> **状态**: <font color="warning">${data.call_type}</font>\n` +
-                           `> **设备**: <font color="comment">${data.dev_id}</font>\n` +
                            `> **时间**: ${time}`;
+                
                 feishuCard = createFeishuCard('收到来电', 'orange', [
-                    { tag: 'div', text: { tag: 'lark_md', content: `**来自**: ${data.phone_num}\n**状态**: ${data.call_type}\n**设备**: ${data.dev_id}\n**时间**: ${time}` } }
+                    { 
+                        tag: 'div', 
+                        text: { 
+                            tag: 'lark_md', 
+                            content: `**设备**: ${devName}\n**卡槽**: ${slot}\n**来自**: ${data.phone_num}\n**状态**: ${data.call_type}\n**时间**: ${time}` 
+                        } 
+                    }
                 ]);
                 break;
 
@@ -147,15 +189,22 @@ class PushService {
                 const statusColor = data.status.includes('异常') || data.status.includes('错误') ? 'warning' : 'info';
                 const feishuColor = data.status.includes('异常') || data.status.includes('错误') ? 'red' : 'green';
                 
-                content = `设备: ${data.devId}\n状态: ${data.status}\n详情: ${data.detail || '无'}\n时间: ${time}`;
+                content = `设备: ${devName}\n状态: ${data.status}\n详情: ${data.detail || '无'}\n时间: ${time}`;
+                
                 markdown = `### 🤖 设备状态更新\n` +
-                           `> **设备**: <font color="comment">${data.devId}</font>\n` +
+                           `> **设备**: <font color="comment">${devName}</font>\n` +
                            `> **状态**: <font color="${statusColor}">${data.status}</font>\n` +
                            `> **详情**: ${data.detail || '无'}\n` +
                            `> **时间**: ${time}`;
                 
                 feishuCard = createFeishuCard('设备状态更新', feishuColor, [
-                    { tag: 'div', text: { tag: 'lark_md', content: `**设备**: ${data.devId}\n**状态**: ${data.status}\n**详情**: ${data.detail || '无'}\n**时间**: ${time}` } }
+                    { 
+                        tag: 'div', 
+                        text: { 
+                            tag: 'lark_md', 
+                            content: `**设备**: ${devName}\n**状态**: ${data.status}\n**详情**: ${data.detail || '无'}\n**时间**: ${time}` 
+                        } 
+                    }
                 ]);
                 break;
 
