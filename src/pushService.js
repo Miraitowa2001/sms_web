@@ -134,7 +134,7 @@ class PushService {
         switch (eventType) {
             case 'sms':
                 title = '收到新短信';
-                content = `来自: ${data.phone_num}\n内容: ${data.content}\n\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
+                content = `内容: ${data.content}\n\n来自: ${data.phone_num}\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
                 
                 markdown = `### 收到新短信\n` +
                            `来自: <font color="info">${data.phone_num}</font>\n` +
