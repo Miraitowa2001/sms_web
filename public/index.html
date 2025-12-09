@@ -1200,8 +1200,8 @@
                         App.Modules.Devices.load();
                         App.Modules.Control.init();
                         
-                        // 定时刷新统计
-                        setInterval(() => App.Modules.Stats.load(), 30000);
+                        // 定时刷新统计 (5分钟刷新一次)
+                        setInterval(() => App.Modules.Stats.load(), 600000);
                     }
                 },
                 async login() {
