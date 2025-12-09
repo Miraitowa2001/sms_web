@@ -162,9 +162,14 @@ class MessageHandler {
      * 处理短信消息 (501-502)
      */
     handleSmsMessage(type, data) {
-        const { devId, slot, phoneNum, content, time } = data;
+        // 兼容不同字段名：设备推送的字段为 phNum/smsBd/smsTs
+        const devId = data.devId;
+        const slot = data.slot;
+        const phoneNumber = data.phoneNum || data.phNum || data.msIsdn || data.msisdn || '';
+        const content = data.content || data.smsBd || '';
+        const smsTime = data.time || (data.smsTs ? new Date(data.smsTs * 1000).toISOString() : new Date().toISOString());
         
-        console.log(`[SMS] 收到短信: ${phoneNum} -> ${content}`);
+        console.log(`[SMS] 收到短信: ${phoneNumber} -> ${content}`);
 
         // 记录短信
         try {
@@ -172,7 +177,7 @@ class MessageHandler {
                 INSERT INTO sms_records (dev_id, slot, phone_num, content, sms_time, direction)
                 VALUES (?, ?, ?, ?, ?, 'in')
             `);
-            stmt.run(devId, slot, phoneNum, content, time || new Date().toISOString());
+            stmt.run(devId, slot, phoneNumber || 'unknown', content || '', smsTime);
         } catch (error) {
             console.error('[SMS] 记录短信失败:', error);
         }
@@ -180,7 +185,7 @@ class MessageHandler {
         // 推送短信通知
         pushService.push('sms', {
             dev_id: devId,
-            phone_num: phoneNum,
+            phone_num: phoneNumber,
             content: content
         });
 
