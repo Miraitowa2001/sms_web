@@ -1031,13 +1031,16 @@ router.get('/sms', (req, res) => {
             params.push(req.query.slot);
         }
         if (dateStart) {
-            sql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
-            countSql += ' AND DATE(COALESCE(sms_time, created_at)) >= ?';
+            // 兼容 sms_time 为时间戳或空的情况，统一转为 UTC+8 日期进行比较
+            const dateSql = "DATE(CASE WHEN sms_time GLOB '[0-9]*' THEN datetime(sms_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
+            sql += ` AND ${dateSql} >= ?`;
+            countSql += ` AND ${dateSql} >= ?`;
             params.push(dateStart);
         }
         if (dateEnd) {
-            sql += ' AND DATE(COALESCE(sms_time, created_at)) <= ?';
-            countSql += ' AND DATE(COALESCE(sms_time, created_at)) <= ?';
+            const dateSql = "DATE(CASE WHEN sms_time GLOB '[0-9]*' THEN datetime(sms_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
+            sql += ` AND ${dateSql} <= ?`;
+            countSql += ` AND ${dateSql} <= ?`;
             params.push(dateEnd);
         }
         
@@ -1226,13 +1229,16 @@ router.get('/calls', (req, res) => {
             params.push(req.query.slot);
         }
         if (dateStart) {
-            sql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
-            countSql += ' AND DATE(COALESCE(start_time, created_at)) >= ?';
+            // 兼容 start_time 为时间戳或空的情况，统一转为 UTC+8 日期进行比较
+            const dateSql = "DATE(CASE WHEN start_time GLOB '[0-9]*' THEN datetime(start_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
+            sql += ` AND ${dateSql} >= ?`;
+            countSql += ` AND ${dateSql} >= ?`;
             params.push(dateStart);
         }
         if (dateEnd) {
-            sql += ' AND DATE(COALESCE(start_time, created_at)) <= ?';
-            countSql += ' AND DATE(COALESCE(start_time, created_at)) <= ?';
+            const dateSql = "DATE(CASE WHEN start_time GLOB '[0-9]*' THEN datetime(start_time, 'unixepoch', '+8 hours') ELSE datetime(created_at, '+8 hours') END)";
+            sql += ` AND ${dateSql} <= ?`;
+            countSql += ` AND ${dateSql} <= ?`;
             params.push(dateEnd);
         }
         
@@ -1316,7 +1322,8 @@ router.get('/messages', (req, res) => {
         const { devId, type, msgType, msgCategory, dateStart, dateEnd, page = 1, limit = 100, export: exportType } = req.query;
         const offset = (page - 1) * limit;
         
-        let sql = 'SELECT * FROM messages WHERE 1=1';
+        // 修复时间显示问题：数据库存储的是UTC时间，查询时转换为UTC+8
+        let sql = "SELECT id, dev_id, type, type_name, raw_data, datetime(created_at, '+8 hours') as created_at FROM messages WHERE 1=1";
         let countSql = 'SELECT COUNT(*) as total FROM messages WHERE 1=1';
         const params = [];
         
@@ -1364,13 +1371,13 @@ router.get('/messages', (req, res) => {
             }
         }
         if (dateStart) {
-            sql += ' AND DATE(created_at) >= ?';
-            countSql += ' AND DATE(created_at) >= ?';
+            sql += " AND DATE(created_at, '+8 hours') >= ?";
+            countSql += " AND DATE(created_at, '+8 hours') >= ?";
             params.push(dateStart);
         }
         if (dateEnd) {
-            sql += ' AND DATE(created_at) <= ?';
-            countSql += ' AND DATE(created_at) <= ?';
+            sql += " AND DATE(created_at, '+8 hours') <= ?";
+            countSql += " AND DATE(created_at, '+8 hours') <= ?";
             params.push(dateEnd);
         }
         
@@ -1431,11 +1438,11 @@ router.get('/stats', (req, res) => {
         // 今日统计
         const todaySms = db.prepare(`
             SELECT COUNT(*) as count FROM sms_records 
-            WHERE date(created_at) = date('now', 'localtime')
+            WHERE date(created_at, '+8 hours') = date('now', '+8 hours')
         `).get();
         const todayCalls = db.prepare(`
             SELECT COUNT(*) as count FROM call_records 
-            WHERE date(created_at) = date('now', 'localtime')
+            WHERE date(created_at, '+8 hours') = date('now', '+8 hours')
         `).get();
         
         res.json({
