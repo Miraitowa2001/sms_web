@@ -28,13 +28,24 @@ class PushService {
      * 保存推送配置
      */
     saveConfig(channel, enabled, config, events) {
+        const safeConfig = config || {};
+        const safeEvents = Array.isArray(events) ? events : [];
+
         try {
-            const stmt = db.prepare(`
+            // 先尝试更新，若不存在则插入，避免新增渠道时更新0行导致配置丢失
+            const updateResult = db.prepare(`
                 UPDATE push_config 
                 SET enabled = ?, config = ?, events = ?, updated_at = datetime('now', 'localtime')
                 WHERE channel = ?
-            `);
-            stmt.run(enabled ? 1 : 0, JSON.stringify(config), JSON.stringify(events), channel);
+            `).run(enabled ? 1 : 0, JSON.stringify(safeConfig), JSON.stringify(safeEvents), channel);
+
+            if (!updateResult.changes) {
+                db.prepare(`
+                    INSERT INTO push_config (channel, enabled, config, events, updated_at)
+                    VALUES (?, ?, ?, ?, datetime('now', 'localtime'))
+                `).run(channel, enabled ? 1 : 0, JSON.stringify(safeConfig), JSON.stringify(safeEvents));
+            }
+
             return true;
         } catch (error) {
             console.error('[Push] 保存配置失败:', error);
