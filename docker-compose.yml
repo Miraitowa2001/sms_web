@@ -1,0 +1,13 @@
+version: '3'
+services:
+  lvyou-server:
+    build: .
+    container_name: lvyou-server
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    environment:
+      - TZ=Asia/Shanghai

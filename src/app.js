@@ -16,138 +16,76 @@ const { decryptData } = require('./aesDecrypt');
 const app = express();
 const PORT = config.port;
 
-// ==================== API Key 认证中间件 ====================
+// ==================== 中间件配置 ====================
+
+// 1. 基础中间件
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 2. 静态文件服务 (公开访问，无需鉴权)
+// 放在鉴权中间件之前，提高性能并避免鉴权逻辑干扰
+app.use(express.static(path.join(__dirname, '../public')));
+
+// ==================== 鉴权中间件定义 ====================
 
 /**
  * 验证 API Key（用于开发板推送接口）
- * 支持多种传递方式：
- * 1. Header: X-API-Key: your-key
- * 2. Header: Authorization: Bearer your-key
- * 3. Query: ?apiKey=your-key
- * 4. Body: { apiKey: "your-key", ... }
  */
 function apiKeyAuth(req, res, next) {
-    // 检查是否启用 API Key 认证
-    if (!config.apiKey.enabled) {
-        return next();
-    }
+    if (!config.apiKey.enabled) return next();
     
     const configuredKey = config.apiKey.key;
+    let providedKey = req.headers['x-api-key'] || 
+                      (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null) ||
+                      req.query.apiKey || 
+                      (req.body && req.body.apiKey);
     
-    // 从多个位置获取 API Key
-    let providedKey = null;
-    
-    // 1. 从 Header 获取 (X-API-Key)
-    if (req.headers['x-api-key']) {
-        providedKey = req.headers['x-api-key'];
-    }
-    // 2. 从 Header 获取 (Authorization: Bearer xxx)
-    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        providedKey = req.headers.authorization.substring(7);
-    }
-    // 3. 从 Query 获取
-    else if (req.query.apiKey) {
-        providedKey = req.query.apiKey;
-    }
-    // 4. 从 Body 获取
-    else if (req.body && req.body.apiKey) {
-        providedKey = req.body.apiKey;
-    }
-    
-    // 验证 API Key
     if (!providedKey) {
         console.warn(`[Auth] API Key 缺失 - IP: ${req.ip}, Path: ${req.path}`);
-        return res.status(401).json({ 
-            code: -1, 
-            error: 'API Key 缺失',
-            message: '请提供有效的 API Key'
-        });
+        return res.status(401).json({ code: -1, error: 'API Key 缺失', message: '请提供有效的 API Key' });
     }
     
     if (providedKey !== configuredKey) {
-        console.warn(`[Auth] API Key 无效 - IP: ${req.ip}, Path: ${req.path}, Key: ${providedKey.substring(0, 8)}...`);
-        return res.status(403).json({ 
-            code: -1, 
-            error: 'API Key 无效',
-            message: 'API Key 验证失败'
-        });
+        console.warn(`[Auth] API Key 无效 - IP: ${req.ip}, Path: ${req.path}`);
+        return res.status(403).json({ code: -1, error: 'API Key 无效', message: 'API Key 验证失败' });
     }
     
-    // 验证通过
     next();
 }
 
-// ==================== HTTP基本鉴权中间件 ====================
-
 /**
- * 验证HTTP Basic Auth
- * 只对 API 路径进行鉴权，静态文件不需要鉴权
+ * 验证HTTP Basic Auth (用于管理API)
  */
 function basicAuth(req, res, next) {
-    // 检查是否启用鉴权
-    if (!config.auth.enabled) {
-        return next();
-    }
+    if (!config.auth.enabled) return next();
     
-    // 检查是否是排除的路径（开发板推送接口不需要 Basic Auth，由 API Key 单独验证）
+    // 检查排除路径 (保留配置兼容性)
     const excludePaths = config.auth.excludePaths || [];
     if (excludePaths.some(p => req.path === p || req.path.startsWith(p + '/'))) {
         return next();
     }
     
-    // 静态文件不需要鉴权（让前端自己处理登录）
-    // 只有 /api 开头的请求才需要鉴权
-    if (!req.path.startsWith('/api')) {
-        return next();
-    }
-    
-    // 获取Authorization头
-    let authHeader = req.headers.authorization;
-
-    // 如果Header中没有，尝试从Query参数获取 (用于文件下载等无法设置Header的场景)
-    if (!authHeader && req.query._auth) {
-        authHeader = req.query._auth;
-    }
+    let authHeader = req.headers.authorization || req.query._auth;
     
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-        // 不设置 WWW-Authenticate 头，避免浏览器弹出原生认证框
         return res.status(401).json({ error: '需要登录认证' });
     }
     
-    // 解码Base64凭证
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    const credentials = Buffer.from(authHeader.split(' ')[1], 'base64').toString('utf-8');
     const [username, password] = credentials.split(':');
     
-    // 验证用户名密码
     if (username === config.auth.username && password === config.auth.password) {
         return next();
     }
     
-    // 不设置 WWW-Authenticate 头，避免浏览器弹出原生认证框
     return res.status(401).json({ error: '用户名或密码错误' });
 }
 
-// 中间件
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ==================== 辅助函数 ====================
 
-// 对管理页面和API应用鉴权
-app.use(basicAuth);
-
-// 静态文件服务
-app.use(express.static(path.join(__dirname, '../public')));
-
-// ==================== AES 解密辅助函数 ====================
-
-/**
- * 尝试解密单个字段
- */
 function tryDecrypt(value) {
-    if (!config.aes.enabled || !value) {
-        return value;
-    }
+    if (!config.aes.enabled || !value) return value;
     try {
         return decryptData({ p: value }, config.aes);
     } catch (e) {
@@ -155,127 +93,86 @@ function tryDecrypt(value) {
     }
 }
 
-// ==================== 开发板数据接收接口 ====================
-
 /**
- * POST /push
- * 接收开发板推送的消息 (application/json 格式)
- * 
- * 开发板配置:
- * - 接口地址: http://your-server:3000/push?apiKey=your-key
- * - HTTP请求方式: POST
- * - Content-Type: application/json
- * 
- * API Key 传递方式（任选一种）:
- * - Header: X-API-Key: your-key
- * - Header: Authorization: Bearer your-key
- * - Query: ?apiKey=your-key
- * - Body: { apiKey: "your-key", ... }
+ * 统一处理消息推送逻辑
  */
-app.post('/push', apiKeyAuth, (req, res) => {
-    console.log('[Push] 收到JSON推送:', req.body);
-    
+function handlePushMessage(data, res) {
     try {
-        // 移除 body 中的 apiKey（如果有）
-        const { apiKey, ...bodyData } = req.body;
-        
-        // 如果启用了AES加密，先解密数据
-        const data = decryptData(bodyData, config.aes);
-        const result = messageHandler.handleMessage(data);
-        res.json({ code: 0, message: 'OK' });
-    } catch (error) {
-        console.error('[Push] 处理消息失败:', error);
-        res.status(500).json({ code: -1, message: error.message });
-    }
-});
-
-/**
- * POST /push-form
- * 接收开发板推送的消息 (application/x-www-form-urlencoded 格式)
- * 
- * 开发板配置:
- * - 接口地址: http://your-server:3000/push-form?apiKey=your-key
- * - HTTP请求方式: POST
- * - Content-Type: application/x-www-form-urlencoded
- */
-app.post('/push-form', apiKeyAuth, (req, res) => {
-    console.log('[Push] 收到FORM推送:', req.body);
-    
-    try {
-        // 移除 body 中的 apiKey（如果有）
-        const { apiKey, ...bodyData } = req.body;
-        
-        // 如果启用了AES加密，先解密数据
-        const decrypted = decryptData(bodyData, config.aes);
-        
-        // 将表单数据转换为统一格式
-        const data = {
-            ...decrypted,
-            type: parseInt(decrypted.type, 10),
-            slot: decrypted.slot ? parseInt(decrypted.slot, 10) : undefined,
-            dbm: decrypted.dbm ? parseInt(decrypted.dbm, 10) : undefined,
-            smsTs: decrypted.smsTs ? parseInt(decrypted.smsTs, 10) : undefined,
-            telStartTs: decrypted.telStartTs ? parseInt(decrypted.telStartTs, 10) : undefined,
-            telEndTs: decrypted.telEndTs ? parseInt(decrypted.telEndTs, 10) : undefined,
-        };
-        
-        const result = messageHandler.handleMessage(data);
-        res.json({ code: 0, message: 'OK' });
-    } catch (error) {
-        console.error('[Push] 处理消息失败:', error);
-        res.status(500).json({ code: -1, message: error.message });
-    }
-});
-
-/**
- * GET /push
- * 接收开发板推送的消息 (GET方式)
- * 
- * 开发板配置:
- * - 接口地址: http://your-server:3000/push?apiKey=your-key
- * - HTTP请求方式: GET
- */
-app.get('/push', apiKeyAuth, (req, res) => {
-    console.log('[Push] 收到GET推送:', req.query);
-    
-    try {
-        // 移除 query 中的 apiKey
-        const { apiKey, ...queryData } = req.query;
-        
-        // GET + JSON 方式，数据在 p 参数中
-        let data = queryData;
-        if (queryData.p) {
-            try {
-                // 尝试 AES 解密 p 参数
-                const decryptedP = tryDecrypt(queryData.p);
-                data = typeof decryptedP === 'string' ? JSON.parse(decryptedP) : decryptedP;
-            } catch (e) {
-                // 不是JSON格式，使用原始query参数（也尝试解密）
-                data = tryDecrypt(queryData);
-            }
-        }
-        
-        // 转换数据类型
+        // 数据类型转换
         const parsedData = {
             ...data,
             type: parseInt(data.type, 10),
             slot: data.slot ? parseInt(data.slot, 10) : undefined,
             dbm: data.dbm ? parseInt(data.dbm, 10) : undefined,
+            smsTs: data.smsTs ? parseInt(data.smsTs, 10) : undefined,
+            telStartTs: data.telStartTs ? parseInt(data.telStartTs, 10) : undefined,
+            telEndTs: data.telEndTs ? parseInt(data.telEndTs, 10) : undefined,
         };
         
-        const result = messageHandler.handleMessage(parsedData);
+        messageHandler.handleMessage(parsedData);
         res.json({ code: 0, message: 'OK' });
     } catch (error) {
         console.error('[Push] 处理消息失败:', error);
         res.status(500).json({ code: -1, message: error.message });
     }
+}
+
+// ==================== 路由定义 ====================
+
+// --- 开发板推送接口 (使用 apiKeyAuth) ---
+
+app.post('/push', apiKeyAuth, (req, res) => {
+    console.log('[Push] 收到JSON推送:', req.body);
+    try {
+        const { apiKey, ...bodyData } = req.body;
+        const data = decryptData(bodyData, config.aes);
+        handlePushMessage(data, res);
+    } catch (error) {
+        console.error('[Push] 解密失败:', error);
+        res.status(500).json({ code: -1, message: error.message });
+    }
 });
 
-// ==================== 管理API路由 ====================
-app.use('/api', routes);
+app.post('/push-form', apiKeyAuth, (req, res) => {
+    console.log('[Push] 收到FORM推送:', req.body);
+    try {
+        const { apiKey, ...bodyData } = req.body;
+        const data = decryptData(bodyData, config.aes);
+        handlePushMessage(data, res);
+    } catch (error) {
+        console.error('[Push] 解密失败:', error);
+        res.status(500).json({ code: -1, message: error.message });
+    }
+});
 
-// ==================== 首页重定向 ====================
-app.get('/', (req, res) => {
+app.get('/push', apiKeyAuth, (req, res) => {
+    console.log('[Push] 收到GET推送:', req.query);
+    try {
+        const { apiKey, ...queryData } = req.query;
+        let data = queryData;
+        
+        if (queryData.p) {
+            try {
+                const decryptedP = tryDecrypt(queryData.p);
+                data = typeof decryptedP === 'string' ? JSON.parse(decryptedP) : decryptedP;
+            } catch (e) {
+                data = tryDecrypt(queryData);
+            }
+        }
+        handlePushMessage(data, res);
+    } catch (error) {
+        console.error('[Push] 处理失败:', error);
+        res.status(500).json({ code: -1, message: error.message });
+    }
+});
+
+// --- 管理API (使用 basicAuth) ---
+// 直接挂载鉴权中间件到 /api 路径
+app.use('/api', basicAuth, routes);
+
+// --- 兜底路由 (SPA支持) ---
+// 所有未匹配的路由都返回 index.html，让前端路由处理
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
