@@ -53,7 +53,8 @@ const config = {
     log: {
         // 是否保存原始消息到数据库 (messages表)
         // 建议关闭以节省空间，除非需要调试
-        saveRawMessages: process.env.LOG_RAW_MESSAGES === 'true',
+        // 默认开启，除非环境变量显式设置为 false
+        saveRawMessages: process.env.LOG_RAW_MESSAGES !== 'false',
         
         // 自动清理旧日志的天数 (0表示不清理)
         retentionDays: parseInt(process.env.LOG_RETENTION_DAYS || '7')
