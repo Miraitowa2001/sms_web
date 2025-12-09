@@ -170,11 +170,18 @@ const dbWrapper = {
         return {
             run: (...params) => {
                 try {
-                    db.run(sql, params);
+                    // 使用 prepare + run 替代直接 db.run，确保参数绑定正确
+                    const stmt = db.prepare(sql);
+                    stmt.run(params);
+                    stmt.free();
+                    
+                    const changes = db.getRowsModified();
+                    console.log(`[DB] Execute: ${sql} | Params: ${JSON.stringify(params)} | Changes: ${changes}`);
+                    
                     saveDatabase();
-                    return { changes: db.getRowsModified() };
+                    return { changes };
                 } catch (e) {
-                    console.error('[DB Error]', e.message);
+                    console.error('[DB Error] Run:', e.message, 'SQL:', sql, 'Params:', params);
                     return { changes: 0 };
                 }
             },
@@ -193,7 +200,7 @@ const dbWrapper = {
                     stmt.free();
                     return undefined;
                 } catch (e) {
-                    console.error('[DB Error]', e.message);
+                    console.error('[DB Error] Get:', e.message);
                     return undefined;
                 }
             },
@@ -212,7 +219,7 @@ const dbWrapper = {
                     stmt.free();
                     return results;
                 } catch (e) {
-                    console.error('[DB Error]', e.message);
+                    console.error('[DB Error] All:', e.message);
                     return [];
                 }
             }
@@ -223,7 +230,7 @@ const dbWrapper = {
             db.exec(sql);
             saveDatabase();
         } catch (e) {
-            console.error('[DB Error]', e.message);
+            console.error('[DB Error] Exec:', e.message);
         }
     },
     pragma: () => {} // sql.js 不支持 pragma，忽略
