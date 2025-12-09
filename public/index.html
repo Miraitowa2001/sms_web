@@ -443,6 +443,27 @@
                 margin-bottom: 2px;
                 transform: none;
             }
+
+            /* 移动端：复选框和设备名称并排显示 */
+            td:has(input[type="checkbox"]) {
+                float: left;
+                width: 40px;
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }
+            td[data-label="设备"] {
+                float: left;
+                width: calc(100% - 40px);
+                border-bottom: 1px solid #f1f5f9;
+                text-align: left;
+                padding-left: 0;
+                margin-bottom: 6px;
+                padding-bottom: 8px;
+                display: flex;
+                align-items: center;
+            }
+            td[data-label="设备"]::before { content: none; } /* 隐藏 label */
         }
         
         /* PC端短信内容优化 */
@@ -523,10 +544,10 @@
                     <h2><i data-lucide="list" size="20"></i> 设备管理</h2>
                     <div>
                         <button class="btn btn-primary" onclick="App.UI.showModal('modal-add-device')">
-                            <i data-lucide="plus" size="16"></i> 添加设备
+                            <i data-lucide="plus" size="16"></i>
                         </button>
                         <button class="btn btn-secondary" onclick="App.Modules.Devices.refresh()">
-                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                            <i data-lucide="refresh-cw" size="16"></i>
                         </button>
                     </div>
                 </div>
@@ -535,6 +556,7 @@
                         <table id="table-devices">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;"><input type="checkbox" disabled></th>
                                     <th>设备ID</th>
                                     <th>名称</th>
                                     <th>状态</th>
@@ -850,6 +872,11 @@
                 authKey: 'iot_auth_token'
             },
             
+            // 缓存
+            Cache: {
+                devicesMap: {} // dev_id -> name
+            },
+            
             // 命令定义
             CMD_PARAMS: {
                 'stat': { desc: '获取设备当前状态信息', params: [] },
@@ -1124,15 +1151,28 @@
                 Devices: {
                     async load() {
                         const tbody = document.querySelector('#table-devices tbody');
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">加载中...</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">加载中...</td></tr>';
                         
                         try {
                             const data = await App.Utils.apiFetch('/api/devices');
                             if (data.success && data.data.length > 0) {
+                                // 更新缓存
+                                data.data.forEach(d => {
+                                    if (d.name) App.Cache.devicesMap[d.dev_id] = d.name;
+                                });
+
                                 tbody.innerHTML = data.data.map(d => `
                                     <tr>
+                                        <td><input type="checkbox" value="${d.dev_id}" disabled></td>
                                         <td data-label="设备ID"><span class="device-id" style="font-weight:600;">${d.dev_id}</span></td>
-                                        <td data-label="名称">${d.name || '-'}</td>
+                                        <td data-label="名称">
+                                            <div style="display:flex; align-items:center; gap:6px;">
+                                                <span>${d.name || '-'}</span>
+                                                <button class="btn btn-sm btn-icon" onclick="App.Modules.Devices.editName('${d.dev_id}', '${d.name || ''}')" title="修改名称" style="padding:2px;">
+                                                    <i data-lucide="edit-2" size="14" style="color:var(--primary);"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td data-label="状态">
                                             <span class="badge ${d.status === 'online' ? 'badge-success' : 'badge-danger'}">
                                                 ${d.status === 'online' ? '在线' : '离线'}
@@ -1143,11 +1183,32 @@
                                         <td data-label="最后在线" style="color:var(--text-secondary); font-size:12px;">${App.Utils.formatTime(d.last_seen_at)}</td>
                                     </tr>
                                 `).join('');
+                                lucide.createIcons({ root: tbody });
                             } else {
-                                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#888;">暂无设备数据</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">暂无设备数据</td></tr>';
                             }
                         } catch (e) {
-                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:red;">加载失败</td></tr>';
+                        }
+                    },
+                    async editName(devId, currentName) {
+                        const newName = prompt('请输入新的设备名称:', currentName);
+                        if (newName === null) return; // 取消
+                        if (newName === currentName) return; // 未修改
+                        
+                        try {
+                            const res = await App.Utils.apiFetch(`/api/devices/${devId}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({ name: newName })
+                            });
+                            if (res.success) {
+                                App.UI.toast('名称修改成功', 'success');
+                                this.load(); // 重新加载列表
+                            } else {
+                                App.UI.toast(res.error || '修改失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败: ' + e.message, 'error');
                         }
                     },
                     async refresh() {
@@ -1206,17 +1267,19 @@
                         try {
                             const data = await App.Utils.apiFetch(url);
                             if (data.success && data.data.length > 0) {
-                                tbody.innerHTML = data.data.map(sms => `
+                                tbody.innerHTML = data.data.map(sms => {
+                                    const devName = App.Cache.devicesMap[sms.dev_id] || sms.dev_id;
+                                    return `
                                     <tr>
                                         <td><input type="checkbox" value="${sms.id}"></td>
-                                        <td data-label="设备">${sms.dev_id}</td>
+                                        <td data-label="设备"><span class="badge badge-neutral" style="background:#e0e7ff; color:#4338ca;">${devName}</span></td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${sms.slot || '?'}</span></td>
                                         <td data-label="方向"><span class="badge ${sms.direction === 'in' ? 'badge-info' : 'badge-success'}">${sms.direction === 'in' ? '接收' : '发送'}</span></td>
                                         <td data-label="号码">${sms.phone_num}</td>
                                         <td data-label="内容"><div class="sms-content">${App.Utils.escapeHtml(sms.content)}</div></td>
                                         <td data-label="时间">${App.Utils.formatTime(sms.sms_time || sms.created_at)}</td>
                                     </tr>
-                                `).join('');
+                                `}).join('');
                             } else {
                                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">暂无短信记录</td></tr>';
                             }
@@ -1293,10 +1356,12 @@
                         try {
                             const data = await App.Utils.apiFetch(url);
                             if (data.success && data.data.length > 0) {
-                                tbody.innerHTML = data.data.map(call => `
+                                tbody.innerHTML = data.data.map(call => {
+                                    const devName = App.Cache.devicesMap[call.dev_id] || call.dev_id;
+                                    return `
                                     <tr>
                                         <td><input type="checkbox" value="${call.id}"></td>
-                                        <td data-label="设备">${call.dev_id}</td>
+                                        <td data-label="设备"><span class="badge badge-neutral" style="background:#e0e7ff; color:#4338ca;">${devName}</span></td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">卡${call.slot || '?'}</span></td>
                                         <td data-label="消息类型">${App.Utils.getCallMsgTypeText(call.msg_type)}</td>
                                         <td data-label="通话分类">${App.Utils.getCallTypeText(call.call_type)}</td>
@@ -1304,7 +1369,7 @@
                                         <td data-label="时间">${App.Utils.formatTime(call.start_time)}</td>
                                         <td data-label="时长">${App.Utils.formatDuration(call.duration)}</td>
                                     </tr>
-                                `).join('');
+                                `}).join('');
                             } else {
                                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">暂无通话记录</td></tr>';
                             }
@@ -1390,10 +1455,11 @@
                                         }
                                     } catch(e) {}
                                     
+                                    const devName = App.Cache.devicesMap[log.dev_id] || log.dev_id;
                                     return `
                                     <tr>
                                         <td><input type="checkbox" value="${log.id}"></td>
-                                        <td data-label="设备">${log.dev_id}</td>
+                                        <td data-label="设备"><span class="badge badge-neutral" style="background:#e0e7ff; color:#4338ca;">${devName}</span></td>
                                         <td data-label="卡槽"><span class="badge badge-neutral">${slot}</span></td>
                                         <td data-label="消息类型">${log.type}</td>
                                         <td data-label="类型名称">${log.type_name}</td>
