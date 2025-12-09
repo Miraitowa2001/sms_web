@@ -6,6 +6,7 @@
 const { dbWrapper: db } = require('./database');
 const { getMessageTypeName, getMessageCategory, DEVICE_STATUS, SIM_STATUS } = require('./constants');
 const pushService = require('./pushService');
+const config = require('./config');
 
 class MessageHandler {
     
@@ -48,6 +49,11 @@ class MessageHandler {
      * 记录消息到数据库
      */
     recordMessage(devId, type, data) {
+        // 如果配置为不保存原始消息，则直接返回
+        if (!config.log || !config.log.saveRawMessages) {
+            return;
+        }
+
         try {
             const stmt = db.prepare(`
                 INSERT INTO messages (dev_id, type, type_name, raw_data)

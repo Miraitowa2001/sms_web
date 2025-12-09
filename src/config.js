@@ -48,6 +48,16 @@ const config = {
         key: process.env.AES_KEY || '1234567890123456',  // 16字节密钥（请在 .env 中配置实际值）
         iv: process.env.AES_IV || '1234567890123456'     // 16字节初始化向量（请在 .env 中配置实际值）
     },
+
+    // 日志配置
+    log: {
+        // 是否保存原始消息到数据库 (messages表)
+        // 建议关闭以节省空间，除非需要调试
+        saveRawMessages: process.env.LOG_RAW_MESSAGES === 'true',
+        
+        // 自动清理旧日志的天数 (0表示不清理)
+        retentionDays: parseInt(process.env.LOG_RETENTION_DAYS || '7')
+    },
     
     // 开发板控制指令配置
     deviceControl: {

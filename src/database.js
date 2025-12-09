@@ -6,6 +6,7 @@
 const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
+const config = require('./config');
 
 // 确保数据目录存在
 const dataDir = path.join(__dirname, '../data');
@@ -139,10 +140,43 @@ async function initDatabase() {
 
     console.log('[DB] 数据库初始化完成');
     
+    // 执行一次清理
+    cleanupDatabase();
+
     // 保存数据库
     saveDatabase();
     
     return db;
+}
+
+// 清理旧数据
+function cleanupDatabase() {
+    if (!db || !config.log || !config.log.retentionDays) return;
+    
+    const days = config.log.retentionDays;
+    if (days <= 0) return;
+
+    try {
+        // 计算截止日期 (北京时间)
+        const now = new Date();
+        const threshold = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        
+        // 格式化为 YYYY-MM-DD HH:mm:ss
+        const pad = n => n < 10 ? '0' + n : n;
+        const utc = threshold.getTime() + (threshold.getTimezoneOffset() * 60000);
+        const beijingTime = new Date(utc + (3600000 * 8));
+        const timeStr = `${beijingTime.getFullYear()}-${pad(beijingTime.getMonth() + 1)}-${pad(beijingTime.getDate())} ${pad(beijingTime.getHours())}:${pad(beijingTime.getMinutes())}:${pad(beijingTime.getSeconds())}`;
+
+        // 清理 messages 表
+        db.run("DELETE FROM messages WHERE created_at < ?", [timeStr]);
+        const changes = db.getRowsModified();
+        
+        if (changes > 0) {
+            console.log(`[DB] 自动清理: 删除了 ${changes} 条旧日志 (早于 ${timeStr})`);
+        }
+    } catch (e) {
+        console.error('[DB] 自动清理失败:', e);
+    }
 }
 
 // 保存数据库到文件
@@ -161,6 +195,7 @@ function saveDatabase() {
 
 // 定期自动保存
 setInterval(() => {
+    cleanupDatabase(); // 保存前清理
     saveDatabase();
 }, 30000); // 每30秒保存一次
 
@@ -176,7 +211,10 @@ const dbWrapper = {
                     stmt.free();
                     
                     const changes = db.getRowsModified();
-                    console.log(`[DB] Execute: ${sql} | Params: ${JSON.stringify(params)} | Changes: ${changes}`);
+                    // 仅在有变动且不是定时任务时打印日志，或者直接注释掉以减少干扰
+                    if (changes > 0 && !sql.includes('last_seen_at <')) {
+                        console.log(`[DB] Execute: ${sql.replace(/\s+/g, ' ').trim().substring(0, 50)}... | Changes: ${changes}`);
+                    }
                     
                     saveDatabase();
                     return { changes };
