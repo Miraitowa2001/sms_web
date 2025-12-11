@@ -1975,11 +1975,12 @@
                     return simCards.map(sim => {
                         const statusClass = sim.status === 'ready' ? 'badge-success' : 'badge-danger';
                         const timezone = sim.timezone !== undefined ? sim.timezone : 8;
+                        // 优化移动端显示：使用 flex-wrap 允许换行，增加间距
                         return `
-                            <div style="display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px;">
-                                <span class="badge ${statusClass}">卡${sim.slot}: ${sim.msisdn || '未知'}</span>
+                            <div style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px;">
+                                <span class="badge ${statusClass}" style="white-space:nowrap;">卡${sim.slot}: ${sim.msisdn || '未知'}</span>
                                 <span class="badge badge-neutral" 
-                                      style="cursor:pointer; font-size:10px; padding:1px 6px;" 
+                                      style="cursor:pointer; font-size:10px; padding:1px 6px; white-space:nowrap;" 
                                       onclick="App.Modules.Devices.setSimTimezone('${devId}', ${sim.slot}, ${timezone})"
                                       title="点击修改时区 (当前: UTC${timezone >= 0 ? '+' : ''}${timezone})">
                                     UTC${timezone >= 0 ? '+' : ''}${timezone}

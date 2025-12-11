@@ -98,9 +98,9 @@ class MessageHandler {
 
         try {
             // 使用 msgTs 作为时间戳，如果不存在则使用当前时间
-            // 并根据设备时区进行调整
-            const timezone = this.getDeviceTimezone(devId, data.slot);
-            const now = this.formatTime(data.msgTs, timezone);
+            // 消息日志统一使用北京时间 (UTC+8)，不根据卡槽时区进行特殊调整
+            // 传入 8 给 formatTime，触发 (16-8)=8h 的偏移，即标准的 UTC->北京时间转换
+            const now = this.formatTime(data.msgTs, 8);
             
             const stmt = db.prepare(`
                 INSERT INTO messages (dev_id, type, type_name, raw_data, created_at)
@@ -206,11 +206,24 @@ class MessageHandler {
         // 推送SIM卡状态变更
         // 过滤掉 202 (注册中) 和 203 (ID已获取) 的推送，避免频繁打扰
         if (type !== 202 && type !== 203) {
-            pushService.push('device_status', {
+            const pushData = {
                 devId,
                 status: getMessageTypeName(type),
-                detail: `卡槽${slot}状态变更: ${getMessageTypeName(type)}`
-            });
+                detail: `卡槽${slot}状态变更: ${getMessageTypeName(type)}`,
+                slot,
+                iccid: iccId,
+                imsi,
+                msisdn: msIsdn,
+                signal: dbm,
+                operator: plmn
+            };
+
+            // 如果是 READY 状态，在 detail 中加入号码
+            if (type === 204 && msIsdn) {
+                pushData.detail += ` (${msIsdn})`;
+            }
+
+            pushService.push('device_status', pushData);
         }
 
         return { success: true };
