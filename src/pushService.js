@@ -133,17 +133,22 @@ class PushService {
 
         switch (eventType) {
             case 'sms':
-                title = '收到新短信';
-                content = `内容: ${data.content}\n\n来自: ${data.phone_num}\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
+                const isSent = data.direction === 'out';
+                const actionTitle = isSent ? '短信外发成功' : '收到新短信';
+                const senderLabel = isSent ? '发送给' : '来自';
+                const cardColor = isSent ? 'green' : 'blue';
+
+                title = actionTitle;
+                content = `内容: ${data.content}\n\n${senderLabel}: ${data.phone_num}\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
                 
-                markdown = `### 收到新短信\n` +
-                           `来自: <font color="info">${data.phone_num}</font>\n` +
+                markdown = `### ${actionTitle}\n` +
+                           `${senderLabel}: <font color="info">${data.phone_num}</font>\n` +
                            `内容: \n> ${data.content}\n\n` +
                            `<font color="comment">设备: ${devName}</font>\n` +
                            `<font color="comment">卡槽: ${slot}</font>\n` +
                            `<font color="comment">时间: ${time}</font>`;
                 
-                feishuCard = createFeishuCard('收到新短信', 'blue', [
+                feishuCard = createFeishuCard(actionTitle, cardColor, [
                     { 
                         tag: 'div', 
                         text: { 

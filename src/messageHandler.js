@@ -186,15 +186,19 @@ class MessageHandler {
         // 统一使用北京时间格式 YYYY-MM-DD HH:mm:ss
         const smsTime = this.formatTime(data.smsTs || data.time);
         
-        console.log(`[SMS] 收到短信: ${phoneNumber} -> ${content}`);
+        // 区分接收和发送 (501: 接收, 502: 发送成功)
+        const direction = type === 502 ? 'out' : 'in';
+        const actionText = direction === 'out' ? '短信外发成功' : '收到短信';
+        
+        console.log(`[SMS] ${actionText}: ${phoneNumber} -> ${content}`);
 
         // 记录短信
         try {
             const stmt = db.prepare(`
                 INSERT INTO sms_records (dev_id, slot, phone_num, content, sms_time, direction)
-                VALUES (?, ?, ?, ?, ?, 'in')
+                VALUES (?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(devId, slot, phoneNumber || 'unknown', content || '', smsTime);
+            stmt.run(devId, slot, phoneNumber || 'unknown', content || '', smsTime, direction);
         } catch (error) {
             console.error('[SMS] 记录短信失败:', error);
         }
@@ -208,7 +212,8 @@ class MessageHandler {
             iccid,
             imsi,
             msisdn,
-            net_channel: netChannel
+            net_channel: netChannel,
+            direction: direction
         });
 
         return { success: true };
