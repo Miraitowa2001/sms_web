@@ -56,7 +56,7 @@ chmod +x start.sh
 ### 1. 安装依赖
 
 ```bash
-cd lvyou-server
+cd sms_web
 npm install
 ```
 
