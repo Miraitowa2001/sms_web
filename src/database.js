@@ -104,7 +104,13 @@ async function initDatabase() {
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         )
     `);
-
+    // 检查 call_records 表是否有 duration 字段 (用于旧版数据库升级)
+    try {
+        db.prepare("SELECT duration FROM call_records LIMIT 1").run();
+    } catch (e) {
+        console.log('[DB] 添加 duration 字段到 call_records 表');
+        db.run("ALTER TABLE call_records ADD COLUMN duration INTEGER DEFAULT 0");
+    }
     db.run(`
         CREATE TABLE IF NOT EXISTS push_config (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

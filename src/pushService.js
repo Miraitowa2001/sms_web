@@ -174,22 +174,39 @@ class PushService {
                 break;
 
             case 'call':
-                title = '收到来电';
-                content = `来自: ${data.phone_num}\n状态: ${data.call_type}\n\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
+                const isHangup = data.msg_type === 603 || data.msg_type === 623;
+                title = isHangup ? '通话结束' : '收到来电';
+                const callColor = isHangup ? 'grey' : 'orange';
                 
-                markdown = `### 收到来电\n` +
-                           `来自: <font color="info">${data.phone_num}</font>\n` +
-                           `状态: <font color="warning">${data.call_type}</font>\n\n` +
-                           `<font color="comment">设备: ${devName}</font>\n` +
+                let durationText = '';
+                if (data.duration && data.duration > 0) {
+                    const m = Math.floor(data.duration / 60);
+                    const s = data.duration % 60;
+                    durationText = m > 0 ? `${m}分${s}秒` : `${s}秒`;
+                }
+
+                content = `号码: ${data.phone_num}\n状态: ${data.call_type}`;
+                if (durationText) content += `\n时长: ${durationText}`;
+                content += `\n\n设备: ${devName}\n卡槽: ${slot}\n时间: ${time}`;
+                
+                markdown = `### ${title}\n` +
+                           `号码: <font color="info">${data.phone_num}</font>\n` +
+                           `状态: <font color="warning">${data.call_type}</font>\n`;
+                
+                if (durationText) {
+                    markdown += `时长: <font color="info">${durationText}</font>\n`;
+                }
+
+                markdown += `\n<font color="comment">设备: ${devName}</font>\n` +
                            `<font color="comment">卡槽: ${slot}</font>\n` +
                            `<font color="comment">时间: ${time}</font>`;
                 
-                feishuCard = createFeishuCard('收到来电', 'orange', [
+                feishuCard = createFeishuCard(title, callColor, [
                     { 
                         tag: 'div', 
                         text: { 
                             tag: 'lark_md', 
-                            content: `**来自**: ${data.phone_num}\n**状态**: ${data.call_type}` 
+                            content: `**号码**: ${data.phone_num}\n**状态**: ${data.call_type}${durationText ? `\n**时长**: ${durationText}` : ''}` 
                         } 
                     },
                     { tag: 'hr' },

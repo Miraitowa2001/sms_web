@@ -252,13 +252,18 @@ class MessageHandler {
             console.error('[Call] 记录通话失败:', error);
         }
 
-        // 仅在来电振铃(601)时推送通知，避免重复推送
-        if (type === 601) {
+        // 推送策略：
+        // 601: 来电振铃 (通知用户有电话)
+        // 603: 对方挂断 (通知用户通话结束及时长)
+        // 623: 去电挂断 (通知用户通话结束及时长)
+        if (type === 601 || type === 603 || type === 623) {
             pushService.push('call', {
                 dev_id: devId,
                 phone_num: phoneNumber,
                 call_type: callType,
+                msg_type: type,
                 slot,
+                duration,
                 net_channel: data.netCh
             });
         }
