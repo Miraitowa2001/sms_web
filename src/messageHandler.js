@@ -46,6 +46,48 @@ class MessageHandler {
     }
 
     /**
+     * 获取设备卡槽的时区配置
+     * @param {string} devId - 设备ID
+     * @param {number|string} slot - 卡槽号
+     * @returns {number} 时区偏移量 (默认为8)
+     */
+    getDeviceTimezone(devId, slot) {
+        let timezone = 8; // 默认为8
+        
+        // 尝试转换 slot 为整数
+        let slotNum = parseInt(slot);
+        if (isNaN(slotNum)) slotNum = null;
+
+        try {
+            let simCard = null;
+            
+            // 1. 优先通过 devId 和 slot 查找
+            if (devId && slotNum !== null) {
+                // 尝试精确匹配
+                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slotNum);
+                
+                // 如果没找到，尝试忽略大小写的 dev_id
+                if (!simCard) {
+                    simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? COLLATE NOCASE AND slot = ?').get(devId, slotNum);
+                }
+            }
+            
+            // 2. 如果没找到，尝试查找该设备任意一个已配置时区的卡槽 (兜底策略)
+            if (!simCard || simCard.timezone === null) {
+                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND timezone IS NOT NULL LIMIT 1').get(devId);
+            }
+
+            if (simCard && simCard.timezone !== null) {
+                timezone = simCard.timezone;
+            }
+        } catch (e) {
+            console.warn(`[Timezone] 获取时区配置失败: ${e.message}`);
+        }
+        
+        return timezone;
+    }
+
+    /**
      * 记录消息到数据库
      */
     recordMessage(devId, type, data) {
@@ -55,7 +97,11 @@ class MessageHandler {
         }
 
         try {
-            const now = this.formatTime();
+            // 使用 msgTs 作为时间戳，如果不存在则使用当前时间
+            // 并根据设备时区进行调整
+            const timezone = this.getDeviceTimezone(devId, data.slot);
+            const now = this.formatTime(data.msgTs, timezone);
+            
             const stmt = db.prepare(`
                 INSERT INTO messages (dev_id, type, type_name, raw_data, created_at)
                 VALUES (?, ?, ?, ?, ?)
@@ -188,40 +234,8 @@ class MessageHandler {
         const netChannel = data.netCh;
         
         // 获取卡槽时区配置
-        let timezone = 8; // 默认为8
-        try {
-            let simCard = null;
-            
-            // 1. 优先通过 devId 和 slot 查找 (尝试数字和字符串类型的 slot)
-            if (devId && slot !== null) {
-                // 尝试精确匹配
-                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slot);
-                
-                // 如果没找到，尝试忽略大小写的 dev_id
-                if (!simCard) {
-                    simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? COLLATE NOCASE AND slot = ?').get(devId, slot);
-                }
-            }
-            
-            // 2. 如果没找到，且有 imsi，尝试通过 imsi 查找
-            if ((!simCard || simCard.timezone === null) && imsi) {
-                simCard = db.prepare('SELECT timezone, slot FROM sim_cards WHERE dev_id = ? AND imsi = ?').get(devId, imsi);
-                if (simCard && simCard.slot) slot = simCard.slot;
-            }
-
-            // 3. 如果还是没找到，尝试查找该设备任意一个已配置时区的卡槽 (兜底策略)
-            if (!simCard || simCard.timezone === null) {
-                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND timezone IS NOT NULL LIMIT 1').get(devId);
-            }
-
-            if (simCard && simCard.timezone !== null) {
-                timezone = simCard.timezone;
-            }
-            
-            console.log(`[SMS] Timezone lookup: devId=${devId}, slot=${slot}, found=${simCard ? simCard.timezone : 'none'}, used=${timezone}`);
-        } catch (e) {
-            console.warn('[SMS] 获取时区配置失败，使用默认值:', e.message);
-        }
+        const timezone = this.getDeviceTimezone(devId, slot);
+        console.log(`[SMS] Timezone lookup: devId=${devId}, slot=${slot}, used=${timezone}`);
 
         // 统一使用指定时区格式 YYYY-MM-DD HH:mm:ss
         const smsTime = this.formatTime(data.smsTs || data.time, timezone);
@@ -272,24 +286,7 @@ class MessageHandler {
         const callType = getMessageTypeName(type);
         
         // 获取卡槽时区配置
-        let timezone = 8;
-        try {
-            let simCard = null;
-            if (devId && slot !== null) {
-                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slot);
-            }
-            
-            // 兜底：如果没找到，查找该设备任意一个已配置时区的卡槽
-            if (!simCard || simCard.timezone === null) {
-                simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND timezone IS NOT NULL LIMIT 1').get(devId);
-            }
-
-            if (simCard && simCard.timezone !== null) {
-                timezone = simCard.timezone;
-            }
-        } catch (e) {
-            // 忽略错误
-        }
+        const timezone = this.getDeviceTimezone(devId, slot);
 
         // 计算时间与时长
         // telStartTs, telEndTs 是秒级时间戳
