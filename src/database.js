@@ -219,7 +219,7 @@ const dbWrapper = {
                     saveDatabase();
                     return { changes };
                 } catch (e) {
-                    console.error('[DB Error] Run:', e.message, 'SQL:', sql, 'Params:', params);
+                    console.error('[DB Error] Run:', e.message || e, 'SQL:', sql, 'Params:', params);
                     return { changes: 0 };
                 }
             },
@@ -238,7 +238,7 @@ const dbWrapper = {
                     stmt.free();
                     return undefined;
                 } catch (e) {
-                    console.error('[DB Error] Get:', e.message);
+                    console.error('[DB Error] Get:', e.message || e);
                     return undefined;
                 }
             },
@@ -257,7 +257,7 @@ const dbWrapper = {
                     stmt.free();
                     return results;
                 } catch (e) {
-                    console.error('[DB Error] All:', e.message);
+                    console.error('[DB Error] All:', e.message || e);
                     return [];
                 }
             }
@@ -268,7 +268,7 @@ const dbWrapper = {
             db.exec(sql);
             saveDatabase();
         } catch (e) {
-            console.error('[DB Error] Exec:', e.message);
+            console.error('[DB Error] Exec:', e.message || e);
         }
     },
     pragma: () => {} // sql.js 不支持 pragma，忽略

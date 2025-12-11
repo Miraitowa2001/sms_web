@@ -102,8 +102,8 @@ function handlePushMessage(data, res) {
         const parsedData = {
             ...data,
             type: parseInt(data.type, 10),
-            slot: data.slot ? parseInt(data.slot, 10) : undefined,
-            dbm: data.dbm ? parseInt(data.dbm, 10) : undefined,
+            slot: (data.slot !== undefined && data.slot !== '') ? parseInt(data.slot, 10) : undefined,
+            dbm: (data.dbm !== undefined && data.dbm !== '') ? parseInt(data.dbm, 10) : undefined,
             smsTs: data.smsTs ? parseInt(data.smsTs, 10) : undefined,
             telStartTs: data.telStartTs ? parseInt(data.telStartTs, 10) : undefined,
             telEndTs: data.telEndTs ? parseInt(data.telEndTs, 10) : undefined,

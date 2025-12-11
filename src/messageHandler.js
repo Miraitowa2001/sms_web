@@ -145,7 +145,7 @@ class MessageHandler {
                     updated_at = ?
                 WHERE dev_id = ? AND slot = ?
             `);
-            stmt.run(iccId || '', imsi || '', msIsdn || '', dbm, plmn || '', status, now, devId, slot);
+            stmt.run(iccId || '', imsi || '', msIsdn || '', dbm ?? null, plmn || '', status, now, devId, slot);
         } else {
             const stmt = db.prepare(`
                 INSERT INTO sim_cards (dev_id, slot, iccid, imsi, msisdn, dbm, plmn, status, updated_at)
