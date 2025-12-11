@@ -1434,7 +1434,7 @@
                                             </span>
                                         </td>
                                         <td data-label="网络">${d.last_ip ? `<a href="http://${d.last_ip}/mgr" target="_blank" style="text-decoration:underline; color:var(--primary-color);" title="进入后台管理">${d.last_ip}</a>` : '-'}</td>
-                                        <td data-label="SIM卡">${App.Utils.formatSimInfo(d.sim_cards)}</td>
+                                        <td data-label="SIM卡">${App.Utils.formatSimInfo(d.sim_cards, d.dev_id)}</td>
                                         <td data-label="最后在线" style="color:var(--text-secondary); font-size:12px;">${App.Utils.formatTime(d.last_seen_at)}</td>
                                     </tr>
                                 `).join('');
@@ -1498,6 +1498,28 @@
                             }
                         } catch (e) {
                             App.UI.toast('添加失败: ' + e.message, 'error');
+                        }
+                    },
+                    async setSimTimezone(devId, slot, currentZone) {
+                        const newZone = prompt(`请输入卡槽${slot}的【当地时区】\n系统将自动将其转换为北京时间显示。\n\n例如：\n英国卡请输入 0\n中国卡请输入 8\n日本卡请输入 9`, currentZone);
+                        if (newZone === null) return;
+                        
+                        const timezone = parseFloat(newZone);
+                        if (isNaN(timezone)) return App.UI.toast('请输入有效的数字', 'warning');
+                        
+                        try {
+                            const res = await App.Utils.apiFetch(`/api/devices/${devId}/sim-config`, {
+                                method: 'POST',
+                                body: JSON.stringify({ slot, timezone })
+                            });
+                            if (res.success) {
+                                App.UI.toast('时区设置成功', 'success');
+                                this.load();
+                            } else {
+                                App.UI.toast(res.error || '设置失败', 'error');
+                            }
+                        } catch (e) {
+                            App.UI.toast('请求失败: ' + e.message, 'error');
                         }
                     }
                 },
@@ -1948,11 +1970,22 @@
                     const pad = n => n < 10 ? '0' + n : n;
                     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
                 },
-                formatSimInfo(simCards) {
+                formatSimInfo(simCards, devId) {
                     if (!simCards || simCards.length === 0) return '-';
                     return simCards.map(sim => {
                         const statusClass = sim.status === 'ready' ? 'badge-success' : 'badge-danger';
-                        return `<span class="badge ${statusClass}" style="margin-right:5px;">卡${sim.slot}: ${sim.msisdn || '未知'}</span>`;
+                        const timezone = sim.timezone !== undefined ? sim.timezone : 8;
+                        return `
+                            <div style="display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px;">
+                                <span class="badge ${statusClass}">卡${sim.slot}: ${sim.msisdn || '未知'}</span>
+                                <span class="badge badge-neutral" 
+                                      style="cursor:pointer; font-size:10px; padding:1px 6px;" 
+                                      onclick="App.Modules.Devices.setSimTimezone('${devId}', ${sim.slot}, ${timezone})"
+                                      title="点击修改时区 (当前: UTC${timezone >= 0 ? '+' : ''}${timezone})">
+                                    UTC${timezone >= 0 ? '+' : ''}${timezone}
+                                </span>
+                            </div>
+                        `;
                     }).join('');
                 },
                 escapeHtml(text) {

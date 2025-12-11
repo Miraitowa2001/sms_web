@@ -183,8 +183,20 @@ class MessageHandler {
         const imsi = data.imsi || '';
         const msisdn = data.msIsdn || data.msisdn || '';
         const netChannel = data.netCh;
-        // 统一使用北京时间格式 YYYY-MM-DD HH:mm:ss
-        const smsTime = this.formatTime(data.smsTs || data.time);
+        
+        // 获取卡槽时区配置
+        let timezone = 8; // 默认为8，即假设设备上报的是北京时间，这样 Input - 8 + 8 = Input，保持原样
+        try {
+            const simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slot);
+            if (simCard && simCard.timezone !== null) {
+                timezone = simCard.timezone;
+            }
+        } catch (e) {
+            console.warn('[SMS] 获取时区配置失败，使用默认值:', e.message);
+        }
+
+        // 统一使用指定时区格式 YYYY-MM-DD HH:mm:ss
+        const smsTime = this.formatTime(data.smsTs || data.time, timezone);
         
         // 区分接收和发送 (501: 接收, 502: 发送成功)
         const direction = type === 502 ? 'out' : 'in';
@@ -229,10 +241,21 @@ class MessageHandler {
         const phoneNumber = data.phoneNum || data.phNum || data.msIsdn || data.msisdn || '';
         const callType = getMessageTypeName(type);
         
+        // 获取卡槽时区配置
+        let timezone = 8;
+        try {
+            const simCard = db.prepare('SELECT timezone FROM sim_cards WHERE dev_id = ? AND slot = ?').get(devId, slot);
+            if (simCard && simCard.timezone !== null) {
+                timezone = simCard.timezone;
+            }
+        } catch (e) {
+            // 忽略错误
+        }
+
         // 计算时间与时长
         // telStartTs, telEndTs 是秒级时间戳
         // 统一使用北京时间格式 YYYY-MM-DD HH:mm:ss
-        const startTime = this.formatTime(data.telStartTs || data.time);
+        const startTime = this.formatTime(data.telStartTs || data.time, timezone);
         let duration = 0;
         if (data.telStartTs && data.telEndTs && data.telEndTs > data.telStartTs) {
             duration = data.telEndTs - data.telStartTs;
@@ -332,9 +355,12 @@ class MessageHandler {
     }
 
     /**
-     * 格式化时间为 YYYY-MM-DD HH:mm:ss (北京时间)
+     * 格式化时间为 YYYY-MM-DD HH:mm:ss (统一转换为北京时间)
+     * @param {number|string} time - 时间戳或时间字符串
+     * @param {number} sourceTimezone - 数据源的时区 (默认0，即UTC)
+     * 注意：如果是设备上报的本地时间，请传入设备所在时区；如果是系统时间，请留空(默认为UTC)
      */
-    formatTime(time) {
+    formatTime(time, sourceTimezone = 0) {
         let date;
         if (!time) {
             date = new Date();
@@ -349,12 +375,16 @@ class MessageHandler {
             date = new Date();
         }
 
-        // 转换为北京时间 (UTC+8)
-        const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
-        const beijingTime = new Date(utc + (3600000 * 8));
+        // 核心逻辑：将源时区时间转换为北京时间 (UTC+8)
+        // 目标时间戳 = 原始时间戳 - (源时区偏移) + (目标时区偏移 8小时)
+        // 例如：英国时间 02:30 (source=0) -> 02:30 - 0 + 8 = 10:30 (北京时间)
+        // 例如：中国时间 10:30 (source=8) -> 10:30 - 8 + 8 = 10:30 (北京时间)
+        
+        const targetTimestamp = date.getTime() - (sourceTimezone * 3600000) + (28800000); // 28800000 = 8 * 60 * 60 * 1000
+        const targetTime = new Date(targetTimestamp);
         
         const pad = n => n < 10 ? '0' + n : n;
-        return `${beijingTime.getFullYear()}-${pad(beijingTime.getMonth() + 1)}-${pad(beijingTime.getDate())} ${pad(beijingTime.getHours())}:${pad(beijingTime.getMinutes())}:${pad(beijingTime.getSeconds())}`;
+        return `${targetTime.getUTCFullYear()}-${pad(targetTime.getUTCMonth() + 1)}-${pad(targetTime.getUTCDate())} ${pad(targetTime.getUTCHours())}:${pad(targetTime.getUTCMinutes())}:${pad(targetTime.getUTCSeconds())}`;
     }
 
     /**

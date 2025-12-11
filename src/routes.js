@@ -687,6 +687,31 @@ router.get('/devices', (req, res) => {
 });
 
 /**
+ * POST /api/devices/:devId/sim-config
+ * 设置SIM卡配置（如时区）
+ */
+router.post('/devices/:devId/sim-config', (req, res) => {
+    try {
+        const { devId } = req.params;
+        const { slot, timezone } = req.body;
+        
+        if (!slot || timezone === undefined) {
+             return res.status(400).json({ success: false, error: '缺少参数: slot, timezone' });
+        }
+
+        const result = db.prepare('UPDATE sim_cards SET timezone = ? WHERE dev_id = ? AND slot = ?').run(timezone, devId, slot);
+        
+        if (result.changes === 0) {
+             return res.status(404).json({ success: false, error: '未找到该卡槽记录，请等待设备上报后再设置' });
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * POST /api/devices/refresh
  * 刷新设备状态 - 向设备发送stat命令获取最新状态
  * 

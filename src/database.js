@@ -60,10 +60,19 @@ async function initDatabase() {
             dbm INTEGER DEFAULT 0,
             status TEXT DEFAULT 'unknown',
             plmn TEXT DEFAULT '',
+            timezone REAL DEFAULT 8,
             updated_at TEXT DEFAULT (datetime('now', 'localtime')),
             UNIQUE(dev_id, slot)
         )
     `);
+
+    // 检查 sim_cards 表是否有 timezone 字段
+    try {
+        db.prepare("SELECT timezone FROM sim_cards LIMIT 1").run();
+    } catch (e) {
+        console.log('[DB] 添加 timezone 字段到 sim_cards 表');
+        db.run("ALTER TABLE sim_cards ADD COLUMN timezone REAL DEFAULT 8");
+    }
 
     db.run(`
         CREATE TABLE IF NOT EXISTS messages (
