@@ -414,12 +414,21 @@ class MessageHandler {
             date = new Date();
         }
 
-        // 核心逻辑：将源时区时间转换为北京时间 (UTC+8)
-        // 目标时间戳 = 原始时间戳 - (源时区偏移) + (目标时区偏移 8小时)
-        // 例如：英国时间 02:30 (source=0) -> 02:30 - 0 + 8 = 10:30 (北京时间)
-        // 例如：中国时间 10:30 (source=8) -> 10:30 - 8 + 8 = 10:30 (北京时间)
+        // 确保 sourceTimezone 是数字
+        const tz = Number(sourceTimezone);
+
+        // 核心逻辑：
+        // 根据用户提供的例子：smsTs: 1765410010 (UTC 2025-12-10 23:40:10)
+        // UTC+0 时，期望结果为 2025-12-11 15:40:10 (即 UTC + 16h)
+        // 
+        // 推导公式：
+        // 基准 (UTC+8): 保持目前逻辑 (UTC + 8h)
+        // UTC+0: 比基准多 8h -> UTC + 16h
+        // UTC+10: 比基准少 2h -> UTC + 6h
+        // 
+        // 统一公式: 目标时间 = 原始时间 + (16 - tz) 小时
         
-        const targetTimestamp = date.getTime() - (sourceTimezone * 3600000) + (28800000); // 28800000 = 8 * 60 * 60 * 1000
+        const targetTimestamp = date.getTime() + (16 - tz) * 3600000;
         const targetTime = new Date(targetTimestamp);
         
         const pad = n => n < 10 ? '0' + n : n;
