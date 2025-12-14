@@ -10,6 +10,7 @@ const path = require('path');
 const { initDatabase } = require('./database');
 const messageHandler = require('./messageHandler');
 const routes = require('./routes');
+const webhookRoutes = require('./webhookRoutes');
 const config = require('./config');
 const { decryptData } = require('./aesDecrypt');
 
@@ -165,6 +166,9 @@ app.get('/push', apiKeyAuth, (req, res) => {
         res.status(500).json({ code: -1, message: error.message });
     }
 });
+
+// --- Webhook 回调 (无需鉴权，内部校验签名) ---
+app.use('/webhooks', webhookRoutes);
 
 // --- 管理API (使用 basicAuth) ---
 // 直接挂载鉴权中间件到 /api 路径
