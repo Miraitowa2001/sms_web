@@ -247,6 +247,17 @@ class PushService {
                             content: `详情: ${data.detail || '无'}` 
                         } 
                     },
+                    {
+                        tag: 'action',
+                        actions: [
+                            {
+                                tag: 'button',
+                                text: { tag: 'plain_text', content: '重启设备' },
+                                type: 'primary',
+                                value: { cmd: 'restart', dev_id: devId }
+                            }
+                        ]
+                    },
                     { tag: 'hr' },
                     { 
                         tag: 'note', 

@@ -173,6 +173,34 @@ router.post('/feishu', async (req, res) => {
         return res.status(403).json({ error: 'Invalid verification token' });
     }
 
+    // 3. 卡片回调处理
+    if (type === 'card.action.trigger') {
+        console.log('[Feishu] Card action triggered:', JSON.stringify(body.action));
+        
+        const action = body.action.value;
+        let toast = '操作已接收';
+
+        if (action.cmd === 'restart') {
+            if (action.dev_id) {
+                // 异步执行，避免阻塞
+                executeDeviceCommand(action.dev_id, 'restart').then(result => {
+                    console.log(`[Feishu] Restart result for ${action.dev_id}: ${result}`);
+                });
+                toast = `正在重启设备 ${action.dev_id}...`;
+            } else {
+                toast = '缺少设备ID';
+            }
+        }
+
+        // 返回响应，可以更新卡片或仅显示 Toast
+        return res.json({
+            toast: {
+                type: 'info',
+                content: toast
+            }
+        });
+    }
+
     // 处理文本消息
     if (event && event.message && event.message.message_type === 'text') {
         const content = JSON.parse(event.message.content).text;
