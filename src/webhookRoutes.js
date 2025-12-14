@@ -154,13 +154,15 @@ router.post('/feishu', async (req, res) => {
         }
     }
 
-    const { type, challenge, event } = body;
+    const { type, challenge, event, header } = body;
+    const eventType = type || (header ? header.event_type : null);
+    const requestToken = body.token || (header ? header.token : null);
     
     // 1. URL 验证
-    if (type === 'url_verification') {
+    if (eventType === 'url_verification') {
         console.log('[Feishu] Handling url_verification');
-        if (config.feishu.verificationToken && body.token !== config.feishu.verificationToken) {
-            console.warn('[Feishu] Token mismatch. Configured:', config.feishu.verificationToken, 'Received:', body.token);
+        if (config.feishu.verificationToken && requestToken !== config.feishu.verificationToken) {
+            console.warn('[Feishu] Token mismatch. Configured:', config.feishu.verificationToken, 'Received:', requestToken);
             // 飞书要求返回 JSON 格式的错误信息，或者直接 403
             // 但为了保险，返回 JSON
             return res.status(403).json({ error: 'Invalid verification token' });
@@ -170,13 +172,14 @@ router.post('/feishu', async (req, res) => {
     }
     
     // 2. 消息处理
-    if (config.feishu.verificationToken && body.token !== config.feishu.verificationToken) {
+    if (config.feishu.verificationToken && requestToken !== config.feishu.verificationToken) {
         // 再次校验 token (针对事件回调)
+        console.warn('[Feishu] Token mismatch for event. Received:', requestToken);
         return res.status(403).json({ error: 'Invalid verification token' });
     }
 
     // 3. 卡片回调处理
-    if (type === 'card.action.trigger') {
+    if (eventType === 'card.action.trigger') {
         console.log('[Feishu] Card action triggered:', JSON.stringify(body.action));
         
         const action = body.action.value;
@@ -272,7 +275,7 @@ router.post('/feishu', async (req, res) => {
     }
 
     // 4. 菜单点击事件处理 (application.bot.menu_v6)
-    if (header && header.event_type === 'application.bot.menu_v6') {
+    if (eventType === 'application.bot.menu_v6') {
         const eventData = body.event;
         const openId = eventData.operator.operator_id.open_id;
         const eventKey = eventData.event_key;
