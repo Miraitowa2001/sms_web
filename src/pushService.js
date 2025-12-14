@@ -163,17 +163,6 @@ class PushService {
                             content: data.content 
                         } 
                     },
-                    {
-                        tag: 'action',
-                        actions: [
-                            {
-                                tag: 'button',
-                                text: { tag: 'plain_text', content: '查看状态' },
-                                type: 'default',
-                                value: { cmd: 'stat', dev_id: devId }
-                            }
-                        ]
-                    },
                     { tag: 'hr' },
                     { 
                         tag: 'note', 
@@ -220,17 +209,6 @@ class PushService {
                             content: `**号码**: ${data.phone_num}\n**状态**: ${data.call_type}${durationText ? `\n**时长**: ${durationText}` : ''}` 
                         } 
                     },
-                    {
-                        tag: 'action',
-                        actions: [
-                            {
-                                tag: 'button',
-                                text: { tag: 'plain_text', content: '查看状态' },
-                                type: 'default',
-                                value: { cmd: 'stat', dev_id: devId }
-                            }
-                        ]
-                    },
                     { tag: 'hr' },
                     { 
                         tag: 'note', 
@@ -268,27 +246,6 @@ class PushService {
                             tag: 'lark_md', 
                             content: `详情: ${data.detail || '无'}` 
                         } 
-                    },
-                    {
-                        tag: 'action',
-                        actions: [
-                            {
-                                tag: 'button',
-                                text: { tag: 'plain_text', content: '刷新状态' },
-                                type: 'default',
-                                value: { cmd: 'stat', dev_id: devId }
-                            },
-                            {
-                                tag: 'button',
-                                text: { tag: 'plain_text', content: '重启设备' },
-                                type: 'danger',
-                                value: { cmd: 'restart', dev_id: devId },
-                                confirm: {
-                                    title: { tag: 'plain_text', content: '确认重启' },
-                                    text: { tag: 'plain_text', content: '确定要重启该设备吗？' }
-                                }
-                            }
-                        ]
                     },
                     { tag: 'hr' },
                     { 

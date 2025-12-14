@@ -64,23 +64,6 @@ const config = {
     deviceControl: {
         // 请求超时时间（毫秒）
         timeout: 10000
-    },
-
-    // 企业微信机器人配置
-    wecom: {
-        enabled: process.env.WECOM_BOT_ENABLED === 'true',
-        token: process.env.WECOM_TOKEN,
-        encodingAESKey: process.env.WECOM_AES_KEY,
-        corpId: process.env.WECOM_CORP_ID
-    },
-
-    // 飞书机器人配置
-    feishu: {
-        enabled: process.env.FEISHU_BOT_ENABLED === 'true',
-        appId: process.env.FEISHU_APP_ID,
-        appSecret: process.env.FEISHU_APP_SECRET,
-        verificationToken: process.env.FEISHU_VERIFICATION_TOKEN,
-        encryptKey: process.env.FEISHU_ENCRYPT_KEY
     }
 };
 
