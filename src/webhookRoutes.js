@@ -115,13 +115,20 @@ router.post('/wecom', async (req, res) => {
 
 // ==================== 飞书 Webhook ====================
 
+// 飞书验证有时会发送 GET 请求，虽然文档说是 POST
+router.get('/feishu', (req, res) => {
+    res.send('Feishu Webhook Endpoint is working. Please use POST method for events.');
+});
+
 router.post('/feishu', async (req, res) => {
     const { type, challenge, event } = req.body;
     
     // 1. URL 验证
     if (type === 'url_verification') {
         if (config.feishu.verificationToken && req.body.token !== config.feishu.verificationToken) {
-            return res.status(403).send('Invalid verification token');
+            // 飞书要求返回 JSON 格式的错误信息，或者直接 403
+            // 但为了保险，返回 JSON
+            return res.status(403).json({ error: 'Invalid verification token' });
         }
         return res.json({ challenge });
     }
@@ -129,7 +136,7 @@ router.post('/feishu', async (req, res) => {
     // 2. 消息处理
     if (config.feishu.verificationToken && req.body.token !== config.feishu.verificationToken) {
         // 再次校验 token (针对事件回调)
-        return res.status(403).send('Invalid verification token');
+        return res.status(403).json({ error: 'Invalid verification token' });
     }
 
     // 处理文本消息
