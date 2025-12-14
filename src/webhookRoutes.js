@@ -28,7 +28,8 @@ async function processCommand(text) {
         const devId = parts[1];
         if (!devId) return '请输入设备ID，例如: 重启 e4b323...';
         
-        return await executeDeviceCommand(devId, 'restart');
+        const result = await executeDeviceCommand(devId, 'restart');
+        return result.success ? `${result.message}\n设备响应: ${JSON.stringify(result.data)}` : result.message;
     }
     
     if (cmd === '发送短信' || cmd === 'sendsms') {
@@ -42,11 +43,12 @@ async function processCommand(text) {
             return '格式错误。请使用: 发送短信 [设备ID] [号码] [内容]';
         }
         
-        return await executeDeviceCommand(devId, 'sendsms', {
+        const result = await executeDeviceCommand(devId, 'sendsms', {
             p1: '1', // 默认卡槽1
             p2: phone,
             p3: content
         });
+        return result.success ? `${result.message}\n设备响应: ${JSON.stringify(result.data)}` : result.message;
     }
 
     return `未知指令: ${cmd}\n支持的指令:\n- 列表\n- 重启 [设备ID]\n- 发送短信 [设备ID] [号码] [内容]`;
@@ -59,7 +61,7 @@ async function executeDeviceCommand(devId, cmd, params = {}) {
     // 查找设备IP
     const device = db.prepare('SELECT last_ip FROM devices WHERE dev_id = ? AND status = ?').get(devId, 'online');
     if (!device) {
-        return `设备 ${devId} 不在线或不存在`;
+        return { success: false, message: `设备 ${devId} 不在线或不存在` };
     }
     
     // 计算Token
@@ -68,12 +70,12 @@ async function executeDeviceCommand(devId, cmd, params = {}) {
     try {
         const result = await sendCommandToDevice(device.last_ip, token, cmd, params);
         if (result.success) {
-            return `指令已发送。\n设备响应: ${JSON.stringify(result.data)}`;
+            return { success: true, message: '指令已发送', data: result.data };
         } else {
-            return `指令发送失败: ${result.error}`;
+            return { success: false, message: `指令发送失败: ${result.error}` };
         }
     } catch (e) {
-        return `执行出错: ${e.message}`;
+        return { success: false, message: `执行出错: ${e.message}` };
     }
 }
 
@@ -178,15 +180,83 @@ router.post('/feishu', async (req, res) => {
         console.log('[Feishu] Card action triggered:', JSON.stringify(body.action));
         
         const action = body.action.value;
+        const openId = body.open_id; // 用户ID
         let toast = '操作已接收';
 
-        if (action.cmd === 'restart') {
+        if (action.cmd === 'refresh_menu') {
+            // 刷新设备列表卡片
+            const card = createDeviceControlCard();
+            if (card) {
+                // 更新原卡片 (需要 message_id，但这里是发送新卡片还是更新？)
+                // 飞书卡片交互可以返回 card 字段来更新原卡片
+                return res.json({
+                    toast: { type: 'info', content: '列表已刷新' },
+                    card: card
+                });
+            } else {
+                toast = '当前没有在线设备';
+            }
+        } else if (action.cmd === 'restart') {
             if (action.dev_id) {
                 // 异步执行，避免阻塞
                 executeDeviceCommand(action.dev_id, 'restart').then(result => {
-                    console.log(`[Feishu] Restart result for ${action.dev_id}: ${result}`);
+                    console.log(`[Feishu] Restart result for ${action.dev_id}:`, result);
+                    if (result.success) {
+                        sendFeishuMessage(openId, 'text', `设备 ${action.dev_id} 重启指令已发送`);
+                    } else {
+                        sendFeishuMessage(openId, 'text', `设备 ${action.dev_id} 重启失败: ${result.message}`);
+                    }
                 });
                 toast = `正在重启设备 ${action.dev_id}...`;
+            } else {
+                toast = '缺少设备ID';
+            }
+        } else if (action.cmd === 'stat') {
+            if (action.dev_id) {
+                executeDeviceCommand(action.dev_id, 'stat').then(result => {
+                    console.log(`[Feishu] Stat result for ${action.dev_id}:`, result);
+                    if (result.success) {
+                        // 格式化状态信息
+                        const statusData = result.data;
+                        const content = JSON.stringify(statusData, null, 2);
+                        
+                        // 发送卡片消息
+                        const card = {
+                            header: { title: { tag: 'plain_text', content: '设备状态查询' }, template: 'blue' },
+                            elements: [
+                                { 
+                                    tag: 'div', 
+                                    text: { 
+                                        tag: 'lark_md', 
+                                        content: `**设备**: ${action.dev_id}\n**状态**: 在线` 
+                                    } 
+                                },
+                                { 
+                                    tag: 'div', 
+                                    text: { 
+                                        tag: 'lark_md', 
+                                        content: `详细信息:\n${content}` 
+                                    } 
+                                },
+                                {
+                                    tag: 'action',
+                                    actions: [
+                                        {
+                                            tag: 'button',
+                                            text: { tag: 'plain_text', content: '刷新状态' },
+                                            type: 'primary',
+                                            value: { cmd: 'stat', dev_id: action.dev_id }
+                                        }
+                                    ]
+                                }
+                            ]
+                        };
+                        sendFeishuMessage(openId, 'interactive', card);
+                    } else {
+                        sendFeishuMessage(openId, 'text', `查询状态失败: ${result.message}`);
+                    }
+                });
+                toast = `正在查询设备 ${action.dev_id} 状态...`;
             } else {
                 toast = '缺少设备ID';
             }
@@ -201,10 +271,41 @@ router.post('/feishu', async (req, res) => {
         });
     }
 
+    // 4. 菜单点击事件处理 (application.bot.menu_v6)
+    if (header && header.event_type === 'application.bot.menu_v6') {
+        const eventData = body.event;
+        const openId = eventData.operator.operator_id.open_id;
+        const eventKey = eventData.event_key;
+        
+        console.log(`[Feishu] Menu clicked: ${eventKey}`);
+
+        if (eventKey === 'menu_control' || eventKey === 'control') {
+             const card = createDeviceControlCard();
+             if (card) {
+                 await sendFeishuMessage(openId, 'interactive', card);
+             } else {
+                 await sendFeishuMessage(openId, 'text', '当前没有在线设备');
+             }
+        }
+        return res.json({ code: 0 });
+    }
+
     // 处理文本消息
     if (event && event.message && event.message.message_type === 'text') {
-        const content = JSON.parse(event.message.content).text;
+        const content = JSON.parse(event.message.content).text.trim();
         console.log(`[Feishu] Received command: ${content}`);
+        
+        // 检查是否是菜单指令
+        if (['菜单', 'menu', '控制', 'control', '列表', 'list'].includes(content.toLowerCase())) {
+             const openId = event.sender.sender_id.open_id;
+             const card = createDeviceControlCard();
+             if (card) {
+                 await sendFeishuMessage(openId, 'interactive', card);
+             } else {
+                 await sendFeishuMessage(openId, 'text', '当前没有在线设备');
+             }
+             return res.json({ code: 0 });
+        }
         
         // 异步处理，避免超时
         processCommand(content).then(async (replyText) => {
@@ -224,12 +325,85 @@ router.post('/feishu', async (req, res) => {
 });
 
 /**
- * 发送飞书回复 (简易实现)
+ * 创建设备控制卡片
  */
-async function sendFeishuReply(messageId, text) {
+function createDeviceControlCard() {
+    const devices = db.prepare('SELECT dev_id, name, last_ip FROM devices WHERE status = ?').all('online');
+    if (devices.length === 0) {
+        return null;
+    }
+
+    const elements = [];
+    
+    // 头部提示
+    elements.push({
+        tag: 'div',
+        text: { tag: 'lark_md', content: `发现 ${devices.length} 台在线设备：` }
+    });
+
+    devices.forEach(dev => {
+        const devName = dev.name || dev.dev_id;
+        elements.push({
+            tag: 'div',
+            text: { 
+                tag: 'lark_md', 
+                content: `📱 **${devName}**\nID: ${dev.dev_id}` 
+            }
+        });
+        elements.push({
+            tag: 'action',
+            actions: [
+                {
+                    tag: 'button',
+                    text: { tag: 'plain_text', content: '查看状态' },
+                    type: 'primary',
+                    value: { cmd: 'stat', dev_id: dev.dev_id }
+                },
+                {
+                    tag: 'button',
+                    text: { tag: 'plain_text', content: '重启' },
+                    type: 'danger',
+                    value: { cmd: 'restart', dev_id: dev.dev_id },
+                    confirm: {
+                        title: { tag: 'plain_text', content: '确认重启' },
+                        text: { tag: 'plain_text', content: `确定要重启设备 ${devName} 吗？` }
+                    }
+                }
+            ]
+        });
+        elements.push({ tag: 'hr' });
+    });
+
+    // 移除最后一个分割线
+    if (elements.length > 0 && elements[elements.length - 1].tag === 'hr') {
+        elements.pop();
+    }
+    
+    // 底部刷新按钮
+    elements.push({
+        tag: 'action',
+        actions: [
+            {
+                tag: 'button',
+                text: { tag: 'plain_text', content: '🔄 刷新列表' },
+                type: 'default',
+                value: { cmd: 'refresh_menu' }
+            }
+        ]
+    });
+
+    return {
+        header: { title: { tag: 'plain_text', content: '🕹️ 设备控制台' }, template: 'blue' },
+        elements: elements
+    };
+}
+
+/**
+ * 获取飞书 Tenant Access Token
+ */
+async function getTenantAccessToken() {
     try {
-        // 1. 获取 tenant_access_token
-        const tokenRes = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+        const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -237,17 +411,73 @@ async function sendFeishuReply(messageId, text) {
                 app_secret: config.feishu.appSecret
             })
         });
-        const tokenData = await tokenRes.json();
-        if (!tokenData.tenant_access_token) {
-            console.error('[Feishu] Failed to get access token:', tokenData);
-            return;
+        const data = await res.json();
+        if (!data.tenant_access_token) {
+            console.error('[Feishu] Failed to get access token:', data);
+            return null;
         }
+        return data.tenant_access_token;
+    } catch (e) {
+        console.error('[Feishu] Error getting access token:', e);
+        return null;
+    }
+}
 
-        // 2. 回复消息
+/**
+ * 发送飞书消息 (给特定用户)
+ * @param {string} openId - 用户 Open ID
+ * @param {string} msgType - 消息类型 (text, interactive, etc.)
+ * @param {object|string} content - 消息内容 (如果是 text 则为字符串，如果是 interactive 则为 card 对象)
+ */
+async function sendFeishuMessage(openId, msgType, content) {
+    const token = await getTenantAccessToken();
+    if (!token) return;
+
+    let bodyContent;
+    if (msgType === 'text') {
+        bodyContent = JSON.stringify({ text: content });
+    } else if (msgType === 'interactive') {
+        bodyContent = JSON.stringify(content); // card object directly
+    } else {
+        bodyContent = JSON.stringify(content);
+    }
+
+    try {
+        const res = await fetch('https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                receive_id: openId,
+                msg_type: msgType,
+                content: msgType === 'interactive' ? bodyContent : bodyContent
+            })
+        });
+        const result = await res.json();
+        if (result.code !== 0) {
+            console.error('[Feishu] Send message failed:', result);
+        } else {
+            console.log('[Feishu] Message sent to', openId);
+        }
+    } catch (e) {
+        console.error('[Feishu] Error sending message:', e);
+    }
+}
+
+/**
+ * 发送飞书回复 (简易实现)
+ */
+async function sendFeishuReply(messageId, text) {
+    const token = await getTenantAccessToken();
+    if (!token) return;
+
+    try {
         await fetch(`https://open.feishu.cn/open-apis/im/v1/messages/${messageId}/reply`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${tokenData.tenant_access_token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
