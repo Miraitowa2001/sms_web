@@ -117,6 +117,9 @@ router.post('/wecom', async (req, res) => {
 
 // ==================== 飞书 Webhook ====================
 
+// 简单的事件ID缓存，用于去重
+const processedEvents = new Set();
+
 // 飞书验证有时会发送 GET 请求，虽然文档说是 POST
 router.get('/feishu', (req, res) => {
     res.send('Feishu Webhook Endpoint is working. Please use POST method for events.');
@@ -157,6 +160,18 @@ router.post('/feishu', async (req, res) => {
     const { type, challenge, event, header } = body;
     const eventType = type || (header ? header.event_type : null);
     const requestToken = body.token || (header ? header.token : null);
+    const eventId = header ? header.event_id : null;
+
+    // 0. 事件去重
+    if (eventId) {
+        if (processedEvents.has(eventId)) {
+            console.log(`[Feishu] Duplicate event ${eventId}, ignoring.`);
+            return res.json({ code: 0 });
+        }
+        processedEvents.add(eventId);
+        // 5分钟后清理
+        setTimeout(() => processedEvents.delete(eventId), 5 * 60 * 1000);
+    }
     
     // 1. URL 验证
     if (eventType === 'url_verification') {
@@ -287,7 +302,7 @@ router.post('/feishu', async (req, res) => {
              if (card) {
                  await sendFeishuMessage(openId, 'interactive', card);
              } else {
-                 await sendFeishuMessage(openId, 'text', '当前没有在线设备');
+                 await sendFeishuMessage(openId, 'text', '当前没有设备');
              }
         }
         return res.json({ code: 0 });
@@ -295,33 +310,40 @@ router.post('/feishu', async (req, res) => {
 
     // 处理文本消息
     if (event && event.message && event.message.message_type === 'text') {
+        // 立即响应，防止超时重试
+        res.json({ code: 0 });
+
         const content = JSON.parse(event.message.content).text.trim();
         console.log(`[Feishu] Received command: ${content}`);
         
-        // 检查是否是菜单指令
-        if (['菜单', 'menu', '控制', 'control', '列表', 'list'].includes(content.toLowerCase())) {
-             const openId = event.sender.sender_id.open_id;
-             const card = createDeviceControlCard();
-             if (card) {
-                 await sendFeishuMessage(openId, 'interactive', card);
-             } else {
-                 await sendFeishuMessage(openId, 'text', '当前没有在线设备');
-             }
-             return res.json({ code: 0 });
-        }
-        
-        // 异步处理，避免超时
-        processCommand(content).then(async (replyText) => {
-            // 调用飞书 API 回复消息
-            // 需要获取 tenant_access_token
-            // 这里暂时只打印日志，实际需要实现 sendFeishuMessage
-            console.log(`[Feishu] Reply: ${replyText}`);
-            
-            // 如果配置了 App ID 和 Secret，可以尝试发送回复
-            if (config.feishu.appId && config.feishu.appSecret) {
-                await sendFeishuReply(event.message.message_id, replyText);
+        // 异步处理
+        (async () => {
+            try {
+                // 检查是否是菜单指令
+                if (['菜单', 'menu', '控制', 'control', '列表', 'list'].includes(content.toLowerCase())) {
+                     const openId = event.sender.sender_id.open_id;
+                     const card = createDeviceControlCard();
+                     if (card) {
+                         await sendFeishuMessage(openId, 'interactive', card);
+                     } else {
+                         await sendFeishuMessage(openId, 'text', '当前没有设备');
+                     }
+                     return;
+                }
+                
+                // 普通指令处理
+                const replyText = await processCommand(content);
+                console.log(`[Feishu] Reply: ${replyText}`);
+                
+                if (config.feishu.appId && config.feishu.appSecret) {
+                    await sendFeishuReply(event.message.message_id, replyText);
+                }
+            } catch (err) {
+                console.error('[Feishu] Error processing message:', err);
             }
-        });
+        })();
+        
+        return;
     }
     
     res.json({ code: 0 });
@@ -331,7 +353,9 @@ router.post('/feishu', async (req, res) => {
  * 创建设备控制卡片
  */
 function createDeviceControlCard() {
-    const devices = db.prepare('SELECT dev_id, name, last_ip FROM devices WHERE status = ?').all('online');
+    // 查询所有设备，按状态排序（在线在前）
+    const devices = db.prepare('SELECT dev_id, name, last_ip, status FROM devices ORDER BY status DESC, updated_at DESC').all();
+    
     if (devices.length === 0) {
         return null;
     }
@@ -339,18 +363,23 @@ function createDeviceControlCard() {
     const elements = [];
     
     // 头部提示
+    const onlineCount = devices.filter(d => d.status === 'online').length;
     elements.push({
         tag: 'div',
-        text: { tag: 'lark_md', content: `发现 ${devices.length} 台在线设备：` }
+        text: { tag: 'lark_md', content: `共 ${devices.length} 台设备 (${onlineCount} 台在线)：` }
     });
 
     devices.forEach(dev => {
         const devName = dev.name || dev.dev_id;
+        const isOnline = dev.status === 'online';
+        const statusIcon = isOnline ? '🟢' : '🔴';
+        const statusText = isOnline ? '在线' : '离线';
+        
         elements.push({
             tag: 'div',
             text: { 
                 tag: 'lark_md', 
-                content: `📱 **${devName}**\nID: ${dev.dev_id}` 
+                content: `${statusIcon} **${devName}** (${statusText})\nID: ${dev.dev_id}\nIP: ${dev.last_ip || '未知'}` 
             }
         });
         elements.push({
@@ -359,7 +388,7 @@ function createDeviceControlCard() {
                 {
                     tag: 'button',
                     text: { tag: 'plain_text', content: '查看状态' },
-                    type: 'primary',
+                    type: isOnline ? 'primary' : 'default',
                     value: { cmd: 'stat', dev_id: dev.dev_id }
                 },
                 {
