@@ -195,10 +195,26 @@ router.post('/feishu', async (req, res) => {
 
     // 3. 卡片回调处理
     if (eventType === 'card.action.trigger') {
-        console.log('[Feishu] Card action triggered:', JSON.stringify(body.action));
+        // 兼容 V2.0 结构 (action 在 event 对象中) 和 V1.0 结构 (action 在根对象中)
+        const actionData = body.action || (body.event ? body.event.action : null);
         
-        const action = body.action.value;
-        const openId = body.open_id; // 用户ID
+        if (!actionData) {
+            console.error('[Feishu] Action data missing in card.action.trigger');
+            return res.json({ code: 0 });
+        }
+
+        console.log('[Feishu] Card action triggered:', JSON.stringify(actionData));
+        
+        const action = actionData.value;
+        
+        // 获取 open_id
+        let openId = body.open_id; // V1
+        if (!openId && body.event && body.event.operator && body.event.operator.open_id) {
+            openId = body.event.operator.open_id; // V2
+        } else if (!openId && body.user_id) {
+            openId = body.user_id; // 某些旧版本
+        }
+
         let toast = '操作已接收';
 
         if (action.cmd === 'refresh_menu') {
