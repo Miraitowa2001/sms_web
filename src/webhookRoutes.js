@@ -121,15 +121,19 @@ router.get('/feishu', (req, res) => {
 });
 
 router.post('/feishu', async (req, res) => {
+    console.log('[Feishu] Webhook received:', JSON.stringify(req.body));
     const { type, challenge, event } = req.body;
     
     // 1. URL 验证
     if (type === 'url_verification') {
+        console.log('[Feishu] Handling url_verification');
         if (config.feishu.verificationToken && req.body.token !== config.feishu.verificationToken) {
+            console.warn('[Feishu] Token mismatch. Configured:', config.feishu.verificationToken, 'Received:', req.body.token);
             // 飞书要求返回 JSON 格式的错误信息，或者直接 403
             // 但为了保险，返回 JSON
             return res.status(403).json({ error: 'Invalid verification token' });
         }
+        console.log('[Feishu] Verification successful, returning challenge:', challenge);
         return res.json({ challenge });
     }
     
