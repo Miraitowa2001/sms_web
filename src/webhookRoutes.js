@@ -122,13 +122,43 @@ router.get('/feishu', (req, res) => {
 
 router.post('/feishu', async (req, res) => {
     console.log('[Feishu] Webhook received:', JSON.stringify(req.body));
-    const { type, challenge, event } = req.body;
+    
+    let body = req.body;
+
+    // 处理加密消息
+    if (body.encrypt) {
+        try {
+            if (!config.feishu.encryptKey) {
+                console.error('[Feishu] Received encrypted event but FEISHU_ENCRYPT_KEY is not configured.');
+                return res.status(500).json({ error: 'Encryption key missing' });
+            }
+
+            const cipherText = body.encrypt;
+            const key = crypto.createHash('sha256').update(config.feishu.encryptKey).digest();
+            const buffer = Buffer.from(cipherText, 'base64');
+            const iv = buffer.subarray(0, 16);
+            const data = buffer.subarray(16);
+            
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+            let decrypted = decipher.update(data);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            
+            const decryptedStr = decrypted.toString('utf8');
+            console.log('[Feishu] Decrypted body:', decryptedStr);
+            body = JSON.parse(decryptedStr);
+        } catch (e) {
+            console.error('[Feishu] Decryption failed:', e);
+            return res.status(400).json({ error: 'Decryption failed' });
+        }
+    }
+
+    const { type, challenge, event } = body;
     
     // 1. URL 验证
     if (type === 'url_verification') {
         console.log('[Feishu] Handling url_verification');
-        if (config.feishu.verificationToken && req.body.token !== config.feishu.verificationToken) {
-            console.warn('[Feishu] Token mismatch. Configured:', config.feishu.verificationToken, 'Received:', req.body.token);
+        if (config.feishu.verificationToken && body.token !== config.feishu.verificationToken) {
+            console.warn('[Feishu] Token mismatch. Configured:', config.feishu.verificationToken, 'Received:', body.token);
             // 飞书要求返回 JSON 格式的错误信息，或者直接 403
             // 但为了保险，返回 JSON
             return res.status(403).json({ error: 'Invalid verification token' });
@@ -138,7 +168,7 @@ router.post('/feishu', async (req, res) => {
     }
     
     // 2. 消息处理
-    if (config.feishu.verificationToken && req.body.token !== config.feishu.verificationToken) {
+    if (config.feishu.verificationToken && body.token !== config.feishu.verificationToken) {
         // 再次校验 token (针对事件回调)
         return res.status(403).json({ error: 'Invalid verification token' });
     }
