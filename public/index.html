@@ -1197,7 +1197,7 @@
                         document.getElementById('login-overlay').classList.remove('active');
                         document.getElementById('user-menu').style.display = 'flex';
                         App.Modules.Stats.load();
-                        App.Modules.Devices.load();
+                        App.Modules.Devices.refresh();
                         App.Modules.Control.init();
                         
                         // 定时刷新统计
@@ -1244,6 +1244,7 @@
                     tabEl.classList.add('active');
                     
                     // 懒加载数据
+                    if(panelId === 'devices') App.Modules.Devices.refresh();
                     if(panelId === 'sms') App.Modules.SMS.load();
                     if(panelId === 'calls') App.Modules.Calls.load();
                     if(panelId === 'logs') App.Modules.Logs.load();
