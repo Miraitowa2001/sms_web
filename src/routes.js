@@ -37,6 +37,19 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
     if (!deviceIp || !cmd) {
         throw new Error('缺少必要参数: deviceIp, cmd');
     }
+
+    // 支持传入 devId 自动查找 IP
+    let targetIp = deviceIp;
+    // 简单判断：如果不包含点(.)且不包含冒号(:)，则视为设备ID，尝试从数据库查找IP
+    if (targetIp && !targetIp.includes('.') && !targetIp.includes(':')) {
+        const device = db.prepare('SELECT last_ip FROM devices WHERE dev_id = ?').get(targetIp);
+        if (device && device.last_ip) {
+            console.log(`[Control] 根据设备ID ${targetIp} 解析到 IP: ${device.last_ip}`);
+            targetIp = device.last_ip;
+        } else {
+            throw new Error(`未找到设备 ${targetIp} 的IP记录，请确保设备已上线`);
+        }
+    }
     
     if (!token) {
         throw new Error('缺少必要参数: token');
@@ -54,7 +67,7 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
         }
     }
     
-    const url = `http://${deviceIp}/ctrl?${urlParams.toString()}`;
+    const url = `http://${targetIp}/ctrl?${urlParams.toString()}`;
     console.log(`[Control] 发送控制指令: ${url}`);
     
     // 发送HTTP请求到设备
