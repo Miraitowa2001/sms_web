@@ -31,6 +31,47 @@ docker-compose up -d --build
 
 等待片刻，服务启动后即可通过浏览器访问：`http://localhost:36001` (或您服务器的 IP)。
 
+默认端口：
+
+| 宿主机端口 | 协议 | 用途 |
+|---|---|---|
+| 36001 | HTTP | 管理界面、REST API、开发板HTTP上报 |
+| 6888 | 原生TCP | 开发板长连接上报和反向控制 |
+
+### 2.3 Cloudflare Tunnel 部署说明
+
+现有HTTP公网域名可以继续通过 Cloudflare Tunnel 指向：
+
+```text
+http://localhost:36001
+```
+
+开发板HTTP配置示例：
+
+```text
+https://sms.example.com/push
+```
+
+原生TCP不能直接使用普通 Tunnel 公网主机名，因为这种方式要求连接端安装
+`cloudflared access tcp`。开发板TCP配置应使用以下方式之一：
+
+1. 服务器公网IP或仅DNS解析（Cloudflare 灰云）的独立域名，并在云安全组及系统防火墙开放TCP 6888；
+2. Cloudflare Spectrum 原生TCP代理。
+
+推荐为TCP使用独立域名，例如：
+
+```text
+tcp-sms.example.com -> 服务器公网IP（DNS only/灰云）
+```
+
+开发板中填写：
+
+```text
+tcp://tcp-sms.example.com:6888
+```
+
+不要将 `tcp-sms.example.com` CNAME 到普通 Tunnel 的 `cfargotunnel.com` 地址。
+
 ## 3. 数据持久化与配置热更新
 
 本项目采用了**外部挂载**的方式来管理数据和配置，这意味着您可以在不进入容器的情况下管理它们。
@@ -79,5 +120,7 @@ docker-compose up -d --build
 
 ## 5. 故障排查
 
-*   **端口冲突**：默认映射端口为 `36001`。如果被占用，请修改 `docker-compose.yml` 中的 `ports` 部分，例如映射到 8080 端口：`"8080:3000"`。
+*   **端口冲突**：默认映射端口为HTTP `36001` 和TCP `6888`。如被占用，请同时修改 `docker-compose.yml` 和开发板接口地址。
+*   **TCP无连接**：检查云安全组、宿主机防火墙、Docker端口映射以及域名是否为DNS only；普通 Cloudflare Tunnel 主机名不能供开发板直接连接原生TCP。
+*   **TCP连接后立即断开**：检查服务是否在5秒内返回`now`握手、消息是否以二进制`0x11 0x12`结尾，以及AES模式/KEY/IV是否与开发板一致。
 *   **权限问题**：在 Linux 环境下，如果遇到数据库写入权限错误，请确保宿主机的 `data` 目录具有写入权限。

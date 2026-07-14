@@ -860,6 +860,14 @@
 
                             <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%; margin-top: 10px;">
                                 <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">控制通道</label>
+                                    <select id="ctrl-transport" class="form-control">
+                                        <option value="auto">自动（TCP优先，HTTP回退）</option>
+                                        <option value="tcp">仅TCP反向连接</option>
+                                        <option value="http">仅HTTP直连</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1; min-width: 200px;">
                                     <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary);">开发板账号</label>
                                     <input type="text" id="ctrl-board-user" class="form-control" value="admin" placeholder="admin">
                                 </div>
@@ -2036,13 +2044,16 @@
                     },
                     async send() {
                         const deviceIp = document.getElementById('ctrl-device-ip').value.trim();
+                        const deviceSelect = document.getElementById('ctrl-device-select');
+                        const devId = deviceSelect.value || '';
+                        const transport = document.getElementById('ctrl-transport').value;
                         const cmd = document.getElementById('ctrl-cmd-select').value;
                         const user = document.getElementById('ctrl-board-user').value.trim();
                         const pass = document.getElementById('ctrl-board-pass').value.trim();
                         
-                        if (!deviceIp) return App.UI.toast('请输入设备IP', 'error');
+                        if (!devId && !deviceIp) return App.UI.toast('请选择设备或输入设备IP', 'error');
                         if (!cmd) return App.UI.toast('请选择指令', 'warning');
-                        if (!user || !pass) return App.UI.toast('请输入开发板账号和密码', 'warning');
+                        if (transport === 'http' && (!user || !pass)) return App.UI.toast('HTTP控制需要开发板账号和密码', 'warning');
                         
                         const params = {};
                         document.querySelectorAll('#ctrl-params-container [data-param]').forEach(el => {
@@ -2057,14 +2068,14 @@
                         try {
                             const res = await App.Utils.apiFetch('/api/control/send', {
                                 method: 'POST',
-                                body: JSON.stringify({ deviceIp, adminUser: user, adminPassword: pass, cmd, params })
+                                body: JSON.stringify({ devId, deviceIp, transport, adminUser: user, adminPassword: pass, cmd, params })
                             });
                             
                             if (res.success) {
                                 resultBox.className = 'result-box success'; // Note: style needs to be defined or inline
                                 resultBox.style.color = '#a7f3d0';
                                 resultBox.textContent = `✅ 命令执行成功\n\n` +
-                                    `📡 请求URL:\n${res.command?.url || '无'}\n\n` +
+                                    `📡 控制通道：${(res.transport || transport).toUpperCase()}\n\n` +
                                     `📥 设备响应:\n${JSON.stringify(res.data, null, 2)}`;
                                 App.UI.toast('指令发送成功', 'success');
                             } else {

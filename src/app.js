@@ -11,8 +11,9 @@ const { initDatabase } = require('./database');
 const messageHandler = require('./messageHandler');
 const routes = require('./routes');
 const config = require('./config');
-const { decryptData } = require('./aesDecrypt');
+const { decryptData, encryptData } = require('./aesDecrypt');
 const recordingService = require('./recordingService');
+const tcpGateway = require('./tcpGateway');
 
 const app = express();
 const PORT = config.port;
@@ -100,20 +101,22 @@ function tryDecrypt(value) {
 /**
  * 统一处理消息推送逻辑
  */
+function normalizePushData(data, metadata = {}) {
+    return {
+        ...data,
+        ...metadata,
+        type: parseInt(data.type, 10),
+        slot: (data.slot !== undefined && data.slot !== '') ? parseInt(data.slot, 10) : undefined,
+        dbm: (data.dbm !== undefined && data.dbm !== '') ? parseInt(data.dbm, 10) : undefined,
+        smsTs: data.smsTs ? parseInt(data.smsTs, 10) : undefined,
+        telStartTs: data.telStartTs ? parseInt(data.telStartTs, 10) : undefined,
+        telEndTs: data.telEndTs ? parseInt(data.telEndTs, 10) : undefined,
+    };
+}
+
 function handlePushMessage(data, res) {
     try {
-        // 数据类型转换
-        const parsedData = {
-            ...data,
-            type: parseInt(data.type, 10),
-            slot: (data.slot !== undefined && data.slot !== '') ? parseInt(data.slot, 10) : undefined,
-            dbm: (data.dbm !== undefined && data.dbm !== '') ? parseInt(data.dbm, 10) : undefined,
-            smsTs: data.smsTs ? parseInt(data.smsTs, 10) : undefined,
-            telStartTs: data.telStartTs ? parseInt(data.telStartTs, 10) : undefined,
-            telEndTs: data.telEndTs ? parseInt(data.telEndTs, 10) : undefined,
-        };
-        
-        messageHandler.handleMessage(parsedData);
+        messageHandler.handleMessage(normalizePushData(data, { _transport: 'http' }));
         res.json({ code: 0, message: 'OK' });
     } catch (error) {
         console.error('[Push] 处理消息失败:', error);
@@ -187,6 +190,33 @@ async function startServer() {
     // 初始化数据库
     await initDatabase();
     recordingService.cleanupExpired();
+
+    if (config.tcp.enabled) {
+        tcpGateway.configure({
+            ...config.tcp,
+            onMessage: async (rawMessage, connection) => {
+                const decrypted = decryptData(rawMessage, config.aes);
+                const parsed = normalizePushData(decrypted, {
+                    _transport: 'tcp',
+                    _remoteAddress: connection.remoteAddress
+                });
+                messageHandler.handleMessage(parsed);
+                return parsed;
+            },
+            encodeMessage: message => encryptData(message, config.aes)
+        });
+        tcpGateway.on('connected', connection => {
+            console.log(`[TCP] 设备已注册: ${connection.devId} (${connection.remoteAddress}:${connection.remotePort})`);
+        });
+        tcpGateway.on('disconnected', connection => {
+            console.log(`[TCP] 设备已断开: ${connection.devId}`);
+        });
+        tcpGateway.on('clientError', (error, connection) => {
+            console.warn(`[TCP] 客户端异常 ${connection.devId || connection.remoteAddress || 'unknown'}: ${error.message}`);
+        });
+        const tcpAddress = await tcpGateway.start();
+        console.log(`[TCP] 反向控制网关已启动: ${tcpAddress.address}:${tcpAddress.port}`);
+    }
     
     // 定时任务 - 每5分钟检查一次设备离线状态
     setInterval(() => {

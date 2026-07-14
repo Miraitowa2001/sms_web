@@ -12,6 +12,7 @@
 - ✅ 消息日志记录
 - ✅ Web管理界面
 - ✅ RESTful API
+- ✅ HTTP直连 + TCP长连接双协议控制
 
 ## 支持的消息类型
 
@@ -146,6 +147,30 @@ Authorization: Basic YWRtaW46YWRtaW4xMjM=
 `deviceIp`（也可用 `devId`）以及 `token`；也可以提供 `adminPassword` 让服务端计算 Token。
 `GET /api/control/commands` 可获取完整命令清单和参数映射。
 
+控制请求支持 `transport`：
+
+- `auto`（默认）：设备存在TCP长连接时优先TCP，否则回退到HTTP `/ctrl`
+- `tcp`：只允许通过开发板主动建立的TCP连接发送，TCP模式无需开发板token
+- `http`：只允许服务器直连开发板HTTP接口，需要token或`adminPassword`
+
+TCP模式应使用 `devId` 作为目标：
+
+```json
+POST /api/control/sendsms
+{
+  "devId": "498060912345",
+  "transport": "tcp",
+  "slot": 1,
+  "phone": "10086",
+  "content": "cxll",
+  "tid": "sms-001"
+}
+```
+
+`GET /api/control/connections` 可查看当前已注册的TCP设备连接。TCP数据以真实二进制
+`0x11 0x12` 结尾；服务会处理半包/粘包，并在收到100/101/102联网消息后自动返回
+`now`时间同步命令。
+
 | 功能 | 接口路径 | 额外 Body 参数 | 说明 |
 | :--- | :--- | :--- | :--- |
 | **重启设备** | `/api/control/restart` | 无 | 立即重启设备 |
@@ -250,6 +275,36 @@ POST /api/control/telstartrecord
 | POST | `/push` | 接收JSON格式推送 |
 | POST | `/push-form` | 接收Form格式推送 |
 | GET | `/push` | 接收GET方式推送 |
+
+### 5. TCP反向控制配置
+
+适用于开发板处于4G或NAT网络、服务器无法主动访问开发板IP的场景。开发板主动连接
+sms_web，sms_web 再沿同一条长连接下发命令。
+
+在开发板管理后台的“接口信息配置”中设置：
+
+```text
+接口地址: tcp://TCP公网域名或服务器公网IP:6888
+接口消息: 至少启用 100/101/102、401、402、998
+```
+
+短信业务再启用501/502，通话业务启用601~623。TCP首条联网消息必须包含`devId`，
+sms_web 会在5秒内返回14位北京时间完成握手。
+
+HTTP入口可以继续使用 Cloudflare Tunnel；普通 Tunnel 的原生TCP客户端需要安装
+`cloudflared access tcp`，开发板无法使用。因此6888端口应直接暴露，或使用支持原生
+TCP的 Cloudflare Spectrum。不要把TCP域名配置成普通 Tunnel 公网主机名。
+
+公网TCP建议在开发板中启用AES模式2（上下行双向加密），并在sms_web中配置相同参数：
+
+```env
+TCP_ENABLED=true
+TCP_PORT=6888
+AES_ENABLED=true
+AES_MODE=2
+AES_KEY=16字节密钥
+AES_IV=16字节向量
+```
 
 ### 管理接口
 

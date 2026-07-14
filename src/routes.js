@@ -12,6 +12,7 @@ const config = require('./config');
 const pushService = require('./pushService');
 const { COMMANDS, calculateAdminToken, resolveCommand, mapCommandParams } = require('./boardProtocol');
 const recordingService = require('./recordingService');
+const tcpGateway = require('./tcpGateway');
 
 // ==================== 设备控制指令 API ====================
 
@@ -22,13 +23,28 @@ const recordingService = require('./recordingService');
  * @param {string} cmd - 命令名称
  * @param {object} params - 命令参数
  */
-async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
-    if (!deviceIp || !cmd) {
-        throw new Error('缺少必要参数: deviceIp, cmd');
+async function sendCommandToDevice(deviceTarget, token, cmd, params = {}, options = {}) {
+    if (!deviceTarget || !cmd) {
+        throw new Error('缺少必要参数: deviceIp/devId, cmd');
+    }
+
+    const target = String(deviceTarget);
+    const transport = String(options.transport || 'auto').toLowerCase();
+    if (!['auto', 'http', 'tcp'].includes(transport)) throw new Error('transport 仅支持 auto、http、tcp');
+
+    if (transport !== 'http' && tcpGateway.isConnected(target)) {
+        return tcpGateway.sendCommand(target, cmd, params, {
+            timeout: options.timeout || config.tcp.commandTimeout
+        });
+    }
+    if (transport === 'tcp') {
+        const error = new Error(`设备 ${target} 当前没有可用的TCP连接`);
+        error.statusCode = 503;
+        throw error;
     }
 
     // 支持传入 devId 自动查找 IP
-    let targetIp = deviceIp;
+    let targetIp = target;
     // 简单判断：如果不包含点(.)且不包含冒号(:)，则视为设备ID，尝试从数据库查找IP
     if (targetIp && !targetIp.includes('.') && !targetIp.includes(':')) {
         const device = db.prepare('SELECT last_ip FROM devices WHERE dev_id = ?').get(targetIp);
@@ -57,11 +73,11 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
     }
     
     const url = `http://${targetIp}/ctrl?${urlParams.toString()}`;
-    console.log(`[Control] 发送控制指令: ${url}`);
+    console.log(`[Control] 通过HTTP发送 ${cmd} 指令到 ${targetIp}`);
     
     // 发送HTTP请求到设备
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), config.deviceControl.timeout);
     
     try {
         const response = await fetch(url, {
@@ -113,10 +129,17 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
             console.log(`[Control] 设备响应:`, result);
         }
         
+        const deviceCode = decryptedResult && typeof decryptedResult === 'object' && decryptedResult.code !== undefined
+            ? Number(decryptedResult.code)
+            : undefined;
+        const success = response.ok && (deviceCode === undefined || deviceCode === 0);
         return {
-            success: true,
+            success,
+            transport: 'http',
             data: decryptedResult,
-            command: { cmd, params, url }
+            command: { cmd, params, target: targetIp },
+            httpStatus: response.status,
+            ...(success ? {} : { error: decryptedResult?.note || `开发板返回 code=${deviceCode ?? response.status}` })
         };
         
     } catch (fetchError) {
@@ -145,24 +168,28 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
  */
 router.post('/control/send', async (req, res) => {
     try {
-        const { deviceIp, devId, token, adminPassword, adminUser = 'admin', cmd, params = {} } = req.body;
+        const { deviceIp, devId, token, adminPassword, adminUser = 'admin', cmd, params = {}, transport = 'auto', timeout } = req.body;
+        const target = transport !== 'http' && devId ? devId : (deviceIp || devId);
+        if (!target) return res.status(400).json({ success: false, error: '缺少必要参数: deviceIp 或 devId' });
         const effectiveToken = token || (adminPassword ? calculateAdminToken(adminPassword, adminUser) : null);
-        
-        if (!effectiveToken) {
+
+        const tcpAvailable = target && transport !== 'http' && tcpGateway.isConnected(target);
+        if (!effectiveToken && transport !== 'tcp' && !tcpAvailable) {
             return res.status(400).json({ 
                 success: false, 
-                error: '缺少必要参数: token 或 adminPassword'
+                error: 'HTTP控制缺少必要参数: token 或 adminPassword；TCP在线设备无需token'
             });
         }
         
         const canonical = resolveCommand(cmd);
         if (!canonical) return res.status(400).json({ success: false, error: `不支持的开发板命令: ${cmd}` });
-        const result = await sendCommandToDevice(deviceIp || devId, effectiveToken, canonical, params);
+        const mapped = mapCommandParams(canonical, params);
+        const result = await sendCommandToDevice(target, effectiveToken, mapped.command, mapped.params, { transport, timeout });
         res.json(result);
         
     } catch (error) {
         console.error('[Control] 发送控制指令失败:', error);
-        res.status(500).json({ 
+        res.status(error.statusCode || 500).json({
             success: false, 
             error: error.message || '发送控制指令失败'
         });
@@ -177,6 +204,11 @@ router.get('/control/commands', (req, res) => {
     res.json({ success: true, data: COMMANDS });
 });
 
+/** GET /api/control/connections - 当前已建立的开发板TCP连接 */
+router.get('/control/connections', (req, res) => {
+    res.json({ success: true, data: tcpGateway.listConnections() });
+});
+
 /**
  * POST /api/control/:command
  * 所有 X 系列命令的统一语义化入口。仍支持直接传 p1...p14。
@@ -186,17 +218,20 @@ router.post('/control/:command', async (req, res, next) => {
     if (!command) return next();
 
     try {
-        const { deviceIp, devId, token, adminPassword, adminUser = 'admin' } = req.body;
-        const target = deviceIp || devId;
+        const { deviceIp, devId, token, adminPassword, adminUser = 'admin', transport = 'auto', timeout } = req.body;
+        const target = transport !== 'http' && devId ? devId : (deviceIp || devId);
         const effectiveToken = token || (adminPassword ? calculateAdminToken(adminPassword, adminUser) : null);
         if (!target) return res.status(400).json({ success: false, error: '缺少必要参数: deviceIp 或 devId' });
-        if (!effectiveToken) return res.status(400).json({ success: false, error: '缺少必要参数: token 或 adminPassword' });
+        const tcpAvailable = transport !== 'http' && tcpGateway.isConnected(target);
+        if (!effectiveToken && transport !== 'tcp' && !tcpAvailable) {
+            return res.status(400).json({ success: false, error: 'HTTP控制缺少 token 或 adminPassword；TCP在线设备无需token' });
+        }
 
         const mapped = mapCommandParams(command, req.body);
-        const result = await sendCommandToDevice(target, effectiveToken, mapped.command, mapped.params);
+        const result = await sendCommandToDevice(target, effectiveToken, mapped.command, mapped.params, { transport, timeout });
         res.json(result);
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(error.statusCode || 500).json({ success: false, error: error.message });
     }
 });
 

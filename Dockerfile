@@ -14,6 +14,6 @@ COPY . .
 # 创建数据目录
 RUN mkdir -p data
 
-EXPOSE 3000
+EXPOSE 3000 6888
 
 CMD ["npm", "start"]

@@ -85,6 +85,20 @@ function aesDecrypt(encryptedBase64, key, iv) {
     }
 }
 
+function aesEncrypt(plainText, key, iv) {
+    const cipher = crypto.createCipheriv('aes-128-cbc', key, iv);
+    cipher.setAutoPadding(true);
+    return Buffer.concat([cipher.update(String(plainText), 'utf8'), cipher.final()]).toString('base64');
+}
+
+/** 对开发板下行数据加密；仅 AES_MODE=2（双向）时启用。 */
+function encryptData(data, aesConfig) {
+    if (!aesConfig || !aesConfig.enabled || Number(aesConfig.mode) !== 2) return data;
+    const key = parseKeyOrIv(aesConfig.key);
+    const iv = parseKeyOrIv(aesConfig.iv);
+    return { p: aesEncrypt(JSON.stringify(data), key, iv) };
+}
+
 /**
  * 解密开发板上报的数据
  * @param {object} data - 原始请求数据
@@ -135,5 +149,7 @@ function decryptData(data, aesConfig) {
 module.exports = {
     parseKeyOrIv,
     aesDecrypt,
-    decryptData
+    aesEncrypt,
+    decryptData,
+    encryptData
 };

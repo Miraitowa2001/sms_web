@@ -5,9 +5,13 @@ services:
     restart: always
     ports:
       - "36001:3000"
+      # 原生TCP不能通过普通 Cloudflare Tunnel 由开发板直连；需在防火墙/安全组开放此端口。
+      - "6888:6888"
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env
     environment:
       - TZ=Asia/Shanghai
       - PORT=3000
+      - TCP_ENABLED=true
+      - TCP_PORT=6888

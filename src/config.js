@@ -40,6 +40,8 @@ const config = {
     // 开发板加密算法: AES128 CBC pkcs#7 padding
     aes: {
         enabled: process.env.AES_ENABLED === 'true',  // 默认关闭，需要时在 .env 中开启
+        // 0=不加密，1=仅设备上行加密，2=上下行双向加密
+        mode: parseInt(process.env.AES_MODE || '1', 10),
         
         // KEY 和 IV 支持三种格式:
         // 1. ASCII字符串: "1234567890123456" (必须16字节)
@@ -70,7 +72,18 @@ const config = {
     // 开发板控制指令配置
     deviceControl: {
         // 请求超时时间（毫秒）
-        timeout: 10000
+        timeout: parseInt(process.env.DEVICE_CONTROL_TIMEOUT || '10000', 10)
+    },
+
+    // 开发板主动连接的原生 TCP 网关。HTTP 可继续通过 Cloudflare Tunnel 暴露，
+    // TCP 则需要公网端口直连或 Cloudflare Spectrum。
+    tcp: {
+        enabled: process.env.TCP_ENABLED !== 'false',
+        host: process.env.TCP_HOST || '0.0.0.0',
+        port: parseInt(process.env.TCP_PORT || '6888', 10),
+        commandTimeout: parseInt(process.env.TCP_COMMAND_TIMEOUT || '10000', 10),
+        handshakeTimeout: parseInt(process.env.TCP_HANDSHAKE_TIMEOUT || '5000', 10),
+        maxFrameSize: parseInt(process.env.TCP_MAX_FRAME_SIZE || String(1024 * 1024), 10)
     }
 };
 
