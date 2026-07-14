@@ -38,14 +38,17 @@ const MESSAGE_TYPES = {
     641: { name: '通话中本地按键', category: 'call' },
     642: { name: '通话中远程按键', category: 'call' },
 
-    // 电话控制回应消息 (681-689)
+    // 电话与音频控制回应消息
     681: { name: '外呼拨号成功', category: 'call_ctrl' },
     682: { name: '外呼拨号失败', category: 'call_ctrl' },
+    683: { name: 'AMR播放成功', category: 'call_audio' },
     684: { name: '接听成功', category: 'call_ctrl' },
-    685: { name: '接听失败', category: 'call_ctrl' },
+    685: { name: 'AMR播放结束', category: 'call_audio' },
     687: { name: 'TTS播放成功', category: 'call_ctrl' },
     688: { name: 'TTS播放失败', category: 'call_ctrl' },
     689: { name: 'TTS播放结束', category: 'call_ctrl' },
+    695: { name: '通话录音上报成功', category: 'call_audio' },
+    696: { name: '通话录音上报失败', category: 'call_audio' },
 
     // 其它消息
     998: { name: 'PING心跳', category: 'system' }

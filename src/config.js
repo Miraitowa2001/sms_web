@@ -8,7 +8,7 @@
 
 // 加载 .env 文件（如果存在）
 try {
-    require('dotenv').config();
+    require('dotenv').config({ quiet: true });
 } catch (e) {
     // dotenv 未安装时忽略
 }

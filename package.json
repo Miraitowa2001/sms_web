@@ -5,7 +5,8 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "test": "node --test"
   },
   "keywords": [
     "lvyou",
@@ -16,11 +17,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^4.18.2",
-    "nodemailer": "^7.0.11",
-    "sql.js": "^1.10.3",
-    "ws": "^8.18.3"
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "nodemailer": "^9.0.3",
+    "sql.js": "^1.14.1",
+    "ws": "^8.21.0"
   }
 }

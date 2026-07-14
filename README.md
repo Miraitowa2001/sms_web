@@ -113,11 +113,11 @@ Authorization: Basic YWRtaW46YWRtaW4xMjM=
 用于向设备发送指令。**特别说明：`deviceIp` 参数支持直接填写 `设备ID`，系统会自动查找该设备最后一次上报的 IP 地址，解决公网部署时无法固定局域网 IP 的问题。**
 
 #### 2.1 获取控制 Token
-控制指令需要 Token 进行安全校验。
+控制指令需要 Token 进行安全校验。X 系列新版固件的算法为
+`MD5("admin|管理员密码")`，输出 32 位小写十六进制；设备 ID 不参与计算。
 
 - **接口**: `GET /api/control/token`
 - **参数**:
-  - `devId`: 设备ID
   - `username`: 管理员用户名 (默认 admin)
   - `password`: 管理员密码 (默认 admin)
 - **返回**: `{ "success": true, "data": { "token": "..." } }`
@@ -142,7 +142,9 @@ Authorization: Basic YWRtaW46YWRtaW4xMjM=
 ```
 
 #### 2.3 常用快捷指令
-以下接口均为 `POST` 请求，Body 中必须包含 `deviceIp` 和 `token`。
+所有当前固件命令均可通过 `POST /api/control/:command` 调用，Body 中提供
+`deviceIp`（也可用 `devId`）以及 `token`；也可以提供 `adminPassword` 让服务端计算 Token。
+`GET /api/control/commands` 可获取完整命令清单和参数映射。
 
 | 功能 | 接口路径 | 额外 Body 参数 | 说明 |
 | :--- | :--- | :--- | :--- |
@@ -150,9 +152,24 @@ Authorization: Basic YWRtaW46YWRtaW4xMjM=
 | **发送短信** | `/api/control/sendsms` | `slot` (1/2), `phone`, `content`, `tid` | `tid` 为事务ID，用于追踪结果 |
 | **拨打电话** | `/api/control/teldial` | `slot`, `phone`, `duration` (秒), `tts` (内容) | 拨通后可播放 TTS 语音 |
 | **挂断电话** | `/api/control/telhangup` | `slot` | 挂断当前通话 |
-| **卡槽关机** | `/api/control/slotoff` | `slot` | 关闭指定卡槽的模组电源 |
-| **WiFi控制** | `/api/control/wf` | `action` ("on"/"off") | 开关 WiFi |
+| **卡槽电源** | `/api/control/slotpwr` | `slot`, `action` (on/off) | 设置或查询卡槽电源 |
+| **WiFi控制** | `/api/control/wf` | `action` (on/off/ap) | 设置或查询 WiFi 模式 |
 | **每日重启** | `/api/control/dailyrst` | `hour` (0-23) | 设置每日自动重启时间 |
+
+当前命令覆盖设备、卡槽、WiFi、短信、通话、TTS、录音、AMR 和 OTA，包括
+`pingintvl`、`ackmax`、`readcard`、`writecard`、`querysms`、`querytel`、
+`telstartrecord`、`telstoprecord`、`telrecordupload`、`uploadamrlist`、
+`uploadamrremove`、`telamrplay`、`telamrstop`、`otanow` 等。
+
+#### 2.4 上传 AMR 音频
+
+通过 sms_web 将 multipart 请求原样代理给开发板（文件名必须以小写 `.amr` 结尾，
+请求体不超过 101KB）：
+
+```bash
+curl -u admin:admin123 -F "file=@greeting.amr" \
+  "http://localhost:3000/api/control/amr-upload?deviceIp=192.168.1.10"
+```
 
 ### 3. 数据查询 API
 

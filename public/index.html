@@ -741,6 +741,7 @@
                                     <option value="sms">短信消息 (501-502)</option>
                                     <option value="call">电话消息 (601-642)</option>
                                     <option value="call_ctrl">电话控制回应 (681-689)</option>
+                                    <option value="call_audio">通话音频消息 (683/685/695/696)</option>
                                     <option value="command">命令应答 (401-402)</option>
                                     <option value="module">通讯模组 (301)</option>
                                 </optgroup>
@@ -1799,8 +1800,8 @@
                     }
                 },
                 Control: {
-                    init() {
-                        this.loadDevices();
+                    async init() {
+                        await Promise.all([this.loadDevices(), this.loadCommandDefinitions()]);
                         this.renderCmdOptions();
                     },
                     async loadDevices() {
@@ -1821,6 +1822,31 @@
                             }
                         } catch (e) {
                             console.error('加载设备列表失败', e);
+                        }
+                    },
+                    async loadCommandDefinitions() {
+                        try {
+                            const result = await App.Utils.apiFetch('/api/control/commands');
+                            if (!result.success) return;
+                            const previous = App.CMD_PARAMS;
+                            const definitions = {};
+                            for (const [command, info] of Object.entries(result.data)) {
+                                const oldParams = previous[command]?.params || [];
+                                definitions[command] = {
+                                    desc: info.description,
+                                    params: Object.entries(info.params || {}).map(([name, aliases]) => {
+                                        const old = oldParams.find(param => param.name === name);
+                                        return old || {
+                                            name,
+                                            label: `${name}（${aliases[0] || '参数'}）`,
+                                            type: 'text'
+                                        };
+                                    })
+                                };
+                            }
+                            App.CMD_PARAMS = definitions;
+                        } catch (error) {
+                            console.warn('加载新版开发板命令定义失败，使用内置定义', error);
                         }
                     },
                     renderCmdOptions() {
@@ -1877,21 +1903,12 @@
                     async send() {
                         const deviceIp = document.getElementById('ctrl-device-ip').value.trim();
                         const cmd = document.getElementById('ctrl-cmd-select').value;
-                        const devId = document.getElementById('ctrl-device-select').value;
                         const user = document.getElementById('ctrl-board-user').value.trim();
                         const pass = document.getElementById('ctrl-board-pass').value.trim();
                         
                         if (!deviceIp) return App.UI.toast('请输入设备IP', 'error');
                         if (!cmd) return App.UI.toast('请选择指令', 'warning');
                         if (!user || !pass) return App.UI.toast('请输入开发板账号和密码', 'warning');
-                        
-                        // 自动计算 Token
-                        const raw = `${devId}|${user}|${pass}`;
-                        const msgBuffer = new TextEncoder().encode(raw);
-                        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-                        const hashArray = Array.from(new Uint8Array(hashBuffer));
-                        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-                        const token = hashHex.substring(16, 48);
                         
                         const params = {};
                         document.querySelectorAll('#ctrl-params-container [data-param]').forEach(el => {
@@ -1906,7 +1923,7 @@
                         try {
                             const res = await App.Utils.apiFetch('/api/control/send', {
                                 method: 'POST',
-                                body: JSON.stringify({ deviceIp, token, cmd, params })
+                                body: JSON.stringify({ deviceIp, adminUser: user, adminPassword: pass, cmd, params })
                             });
                             
                             if (res.success) {

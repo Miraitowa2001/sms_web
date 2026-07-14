@@ -7,24 +7,12 @@ const express = require('express');
 const router = express.Router();
 const { dbWrapper: db } = require('./database');
 const { MESSAGE_TYPES } = require('./constants');
-const crypto = require('crypto');
 const { decryptData } = require('./aesDecrypt');
 const config = require('./config');
 const pushService = require('./pushService');
+const { COMMANDS, calculateAdminToken, resolveCommand, mapCommandParams } = require('./boardProtocol');
 
 // ==================== 设备控制指令 API ====================
-
-/**
- * 计算token (sha256(devId|adminName|adminPassword))
- * @param {string} devId - 设备ID
- * @param {string} adminName - 管理员用户名
- * @param {string} adminPassword - 管理员密码
- * @returns {string} 64位SHA256 token (大写)
- */
-function calculateToken(devId, adminName, adminPassword) {
-    const input = `${devId}|${adminName}|${adminPassword}`;
-    return crypto.createHash('sha256').update(input).digest('hex').toUpperCase();
-}
 
 /**
  * 发送指令到设备
@@ -156,16 +144,19 @@ async function sendCommandToDevice(deviceIp, token, cmd, params = {}) {
  */
 router.post('/control/send', async (req, res) => {
     try {
-        const { deviceIp, token, cmd, params = {} } = req.body;
+        const { deviceIp, devId, token, adminPassword, adminUser = 'admin', cmd, params = {} } = req.body;
+        const effectiveToken = token || (adminPassword ? calculateAdminToken(adminPassword, adminUser) : null);
         
-        if (!token) {
+        if (!effectiveToken) {
             return res.status(400).json({ 
                 success: false, 
-                error: '缺少必要参数: token（请从开发板后台复制）' 
+                error: '缺少必要参数: token 或 adminPassword'
             });
         }
         
-        const result = await sendCommandToDevice(deviceIp, token, cmd, params);
+        const canonical = resolveCommand(cmd);
+        if (!canonical) return res.status(400).json({ success: false, error: `不支持的开发板命令: ${cmd}` });
+        const result = await sendCommandToDevice(deviceIp || devId, effectiveToken, canonical, params);
         res.json(result);
         
     } catch (error) {
@@ -174,6 +165,92 @@ router.post('/control/send', async (req, res) => {
             success: false, 
             error: error.message || '发送控制指令失败'
         });
+    }
+});
+
+/**
+ * GET /api/control/commands
+ * 返回当前固件文档支持的命令及 sms_web 语义参数映射。
+ */
+router.get('/control/commands', (req, res) => {
+    res.json({ success: true, data: COMMANDS });
+});
+
+/**
+ * POST /api/control/:command
+ * 所有 X 系列命令的统一语义化入口。仍支持直接传 p1...p14。
+ */
+router.post('/control/:command', async (req, res, next) => {
+    const command = resolveCommand(req.params.command);
+    if (!command) return next();
+
+    try {
+        const { deviceIp, devId, token, adminPassword, adminUser = 'admin' } = req.body;
+        const target = deviceIp || devId;
+        const effectiveToken = token || (adminPassword ? calculateAdminToken(adminPassword, adminUser) : null);
+        if (!target) return res.status(400).json({ success: false, error: '缺少必要参数: deviceIp 或 devId' });
+        if (!effectiveToken) return res.status(400).json({ success: false, error: '缺少必要参数: token 或 adminPassword' });
+
+        const mapped = mapCommandParams(command, req.body);
+        const result = await sendCommandToDevice(target, effectiveToken, mapped.command, mapped.params);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/control/amr-upload?deviceIp=192.168.1.10
+ * 原样代理 multipart/form-data 到设备 /AMRUpload（固件限制请求体 101KB）。
+ */
+router.post('/control/amr-upload', async (req, res) => {
+    try {
+        const contentType = req.headers['content-type'] || '';
+        if (!contentType.toLowerCase().startsWith('multipart/form-data;')) {
+            return res.status(415).json({ success: false, error: 'Content-Type 必须为 multipart/form-data' });
+        }
+        const target = req.query.deviceIp || req.query.devId || req.headers['x-device-ip'];
+        if (!target) return res.status(400).json({ success: false, error: '缺少 deviceIp 或 devId' });
+
+        let targetIp = String(target);
+        if (!targetIp.includes('.') && !targetIp.includes(':')) {
+            const device = db.prepare('SELECT last_ip FROM devices WHERE dev_id = ?').get(targetIp);
+            if (!device || !device.last_ip) return res.status(404).json({ success: false, error: `未找到设备 ${targetIp} 的IP记录` });
+            targetIp = device.last_ip;
+        }
+        if (/[/\\?#\s]/.test(targetIp)) return res.status(400).json({ success: false, error: 'deviceIp 格式无效' });
+
+        const maxRequestSize = 103424;
+        const chunks = [];
+        let size = 0;
+        for await (const chunk of req) {
+            size += chunk.length;
+            if (size > maxRequestSize) return res.status(413).json({ success: false, error: 'AMR 上传请求体不能超过 101KB' });
+            chunks.push(chunk);
+        }
+        const body = Buffer.concat(chunks);
+        const headerText = body.toString('latin1', 0, Math.min(body.length, 2048));
+        const filename = /filename="?([^"\r\n;]+)"?/i.exec(headerText)?.[1];
+        if (!filename || !/^[0-9A-Za-z_-]{1,60}\.amr$/.test(filename)) {
+            return res.status(400).json({ success: false, error: 'AMR 文件名仅允许字母、数字、-、_，并且必须以小写 .amr 结尾' });
+        }
+
+        const colonCount = (targetIp.match(/:/g) || []).length;
+        const host = colonCount > 1 && !targetIp.startsWith('[') ? `[${targetIp}]` : targetIp;
+        const response = await fetch(`http://${host}/AMRUpload`, {
+            method: 'POST',
+            headers: { 'content-type': contentType, 'content-length': String(body.length) },
+            body,
+            signal: AbortSignal.timeout(30000)
+        });
+        const responseBody = Buffer.from(await response.arrayBuffer());
+        res.status(response.status);
+        const responseType = response.headers.get('content-type');
+        if (responseType) res.set('Content-Type', responseType);
+        res.send(responseBody);
+    } catch (error) {
+        const message = error.name === 'TimeoutError' ? '设备上传请求超时' : error.message;
+        res.status(502).json({ success: false, error: message });
     }
 });
 
@@ -633,21 +710,14 @@ router.post('/control/otanow', async (req, res) => {
  * 计算设备token
  */
 router.get('/control/token', (req, res) => {
-    const { devId, username = 'admin', password = 'admin' } = req.query;
+    const { username = 'admin', password = 'admin' } = req.query;
     
-    if (!devId) {
-        return res.status(400).json({
-            success: false,
-            error: '缺少必要参数: devId'
-        });
-    }
-    
-    const token = calculateToken(devId, username, password);
+    const token = calculateAdminToken(password, username);
     res.json({
         success: true,
         data: {
             token,
-            formula: `sha256("${devId}|${username}|${password}")`
+            formula: `md5("${username}|${password}").toLowerCase()`
         }
     });
 });
@@ -1380,21 +1450,15 @@ router.get('/messages', (req, res) => {
         
         // 支持按消息大类筛选
         if (msgCategory) {
-            const categoryRanges = {
-                'network': [100, 102],      // 联网消息
-                'sim': [202, 209],          // SIM卡消息
-                'sms': [501, 502],          // 短信消息
-                'call': [601, 642],         // 电话消息(包括601-623和641-642)
-                'call_ctrl': [681, 689],    // 电话控制回应
-                'command': [401, 402],      // 命令应答
-                'module': [301, 301]        // 通讯模组
-            };
-            
-            if (categoryRanges[msgCategory]) {
-                const [min, max] = categoryRanges[msgCategory];
-                sql += ' AND type >= ? AND type <= ?';
-                countSql += ' AND type >= ? AND type <= ?';
-                params.push(min, max);
+            const categoryTypes = Object.entries(MESSAGE_TYPES)
+                .filter(([, info]) => info.category === msgCategory)
+                .map(([type]) => parseInt(type, 10));
+
+            if (categoryTypes.length > 0) {
+                const placeholders = categoryTypes.map(() => '?').join(',');
+                sql += ` AND type IN (${placeholders})`;
+                countSql += ` AND type IN (${placeholders})`;
+                params.push(...categoryTypes);
             }
         }
         // 支持按具体消息类型筛选

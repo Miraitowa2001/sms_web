@@ -172,7 +172,8 @@ app.use('/api', basicAuth, routes);
 
 // --- 兜底路由 (SPA支持) ---
 // 所有未匹配的路由都返回 index.html，让前端路由处理
-app.get('*', (req, res) => {
+// Express 5 / path-to-regexp 8 要求通配符必须命名；花括号形式同时匹配根路径。
+app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
