@@ -171,6 +171,60 @@ curl -u admin:admin123 -F "file=@greeting.amr" \
   "http://localhost:3000/api/control/amr-upload?deviceIp=192.168.1.10"
 ```
 
+#### 2.5 接收开发板通话录音
+
+sms_web 提供独立的录音接收接口。先在 `.env` 设置强随机密钥：
+
+```env
+RECORDING_UPLOAD_KEY=replace-with-a-long-random-key
+RECORDING_MAX_SIZE_MB=50
+RECORDING_RETENTION_DAYS=0
+```
+
+然后在开发板后台将 `telRecUrl` 设置为（域名、端口和密钥按实际修改）：
+
+```text
+http://YOUR_SERVER:3000/recordings/upload?key=YOUR_KEY&devId={{devId}}&slot={{slot}}&phNum={{phNum}}&telStartTs={{telStartTs}}&telConnectedTs={{telConnectedTs}}&telEndTs={{telEndTs}}&tid={{tid}}
+```
+
+开发板以 `multipart/form-data` 上传，文件字段名固定为 `media`。sms_web 校验 AMR 文件头、保存文件和元数据，并返回开发板要求的 JSON：
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "success",
+  "type": "amr",
+  "media_id": "1784000000000_abcd_call_01.amr",
+  "created_at": 1784000000
+}
+```
+
+开发板的接口消息设置还需启用 `695`（上传成功）和 `696`（上传失败），并继续将它们推送到 `/push`。sms_web 会用 `media_id` 或 `tid` 将通知和本地录音关联。
+
+开始录音并在结束后立即上传：
+
+```json
+POST /api/control/telstartrecord
+{
+  "devId": "设备ID",
+  "adminPassword": "开发板管理员密码",
+  "slot": 1,
+  "duration": 30,
+  "filename": "call_01.amr",
+  "upload": 1,
+  "tid": "call-001"
+}
+```
+
+录音管理接口均受管理端 Basic Auth 保护：
+
+| 方法 | 路径 | 说明 |
+|-----|------|------|
+| GET | `/api/recordings` | 分页查询，可按 `devId`、`slot`、`phoneNum`、`status` 筛选 |
+| GET | `/api/recordings/:id/download` | 下载或在线播放 AMR 文件 |
+| DELETE | `/api/recordings/:id` | 删除录音记录及文件 |
+| POST | `/api/recordings/batch-delete` | 批量删除录音记录及文件 |
+
 ### 3. 数据查询 API
 
 用于获取系统存储的历史数据。
@@ -180,6 +234,7 @@ curl -u admin:admin123 -F "file=@greeting.amr" \
 | **设备列表** | `/api/devices` | GET | 无 |
 | **短信记录** | `/api/sms` | GET | `page`, `limit`, `devId`, `keyword` |
 | **通话记录** | `/api/calls` | GET | `page`, `limit`, `type` (incoming/outgoing) |
+| **通话录音** | `/api/recordings` | GET | `page`, `limit`, `devId`, `slot`, `phoneNum`, `status` |
 | **系统日志** | `/api/messages` | GET | `page`, `limit` |
 
 ### 4. 开发板推送接口 (Webhook)

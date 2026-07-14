@@ -7,6 +7,7 @@ const { dbWrapper: db } = require('./database');
 const { getMessageTypeName, getMessageCategory, DEVICE_STATUS, SIM_STATUS } = require('./constants');
 const pushService = require('./pushService');
 const config = require('./config');
+const recordingService = require('./recordingService');
 
 class MessageHandler {
     
@@ -37,6 +38,8 @@ class MessageHandler {
                 return this.handleSmsMessage(type, data);
             case 'call':
                 return this.handleCallMessage(type, data);
+            case 'call_audio':
+                return this.handleCallAudioMessage(type, data);
             case 'system':
                 return this.handleSystemMessage(type, data);
             default:
@@ -340,6 +343,26 @@ class MessageHandler {
             });
         }
 
+        return { success: true };
+    }
+
+    /**
+     * 处理通话音频消息。695/696 用于关联录音文件上传结果；
+     * 683/685（AMR播放）仍保留在消息日志中。
+     */
+    handleCallAudioMessage(type, data) {
+        if (type === 695 || type === 696) {
+            recordingService.recordResult(data);
+            pushService.push('call', {
+                dev_id: data.devId,
+                slot: data.slot,
+                phone_num: data.phNum || data.phoneNum || '',
+                tid: data.tid,
+                media_id: data.telMediaId,
+                status: type === 695 ? 'recording_uploaded' : 'recording_failed',
+                detail: type === 695 ? '通话录音上传成功' : `通话录音上传失败: ${data.note || '未知原因'}`
+            });
+        }
         return { success: true };
     }
 

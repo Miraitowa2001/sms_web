@@ -59,6 +59,13 @@ const config = {
         // 自动清理旧日志的天数 (0表示不清理)
         retentionDays: parseInt(process.env.LOG_RETENTION_DAYS || '7')
     },
+
+    // 通话录音接收配置。开发板 telRecUrl 应指向 /recordings/upload?key=...
+    recordings: {
+        uploadKey: process.env.RECORDING_UPLOAD_KEY || process.env.API_KEY || 'your-secure-api-key-here',
+        maxFileSize: parseInt(process.env.RECORDING_MAX_SIZE_MB || '50', 10) * 1024 * 1024,
+        retentionDays: parseInt(process.env.RECORDING_RETENTION_DAYS || '0', 10)
+    },
     
     // 开发板控制指令配置
     deviceControl: {

@@ -11,6 +11,7 @@ const { decryptData } = require('./aesDecrypt');
 const config = require('./config');
 const pushService = require('./pushService');
 const { COMMANDS, calculateAdminToken, resolveCommand, mapCommandParams } = require('./boardProtocol');
+const recordingService = require('./recordingService');
 
 // ==================== 设备控制指令 API ====================
 
@@ -1055,6 +1056,7 @@ router.delete('/devices/:devId', (req, res) => {
         db.prepare('DELETE FROM messages WHERE dev_id = ?').run(devId);
         db.prepare('DELETE FROM sms_records WHERE dev_id = ?').run(devId);
         db.prepare('DELETE FROM call_records WHERE dev_id = ?').run(devId);
+        recordingService.deleteByDevice(devId);
         
         const result = db.prepare('DELETE FROM devices WHERE dev_id = ?').run(devId);
         
@@ -1534,6 +1536,7 @@ router.get('/stats', (req, res) => {
         const onlineCount = db.prepare("SELECT COUNT(*) as count FROM devices WHERE status = 'online'").get();
         const smsCount = db.prepare('SELECT COUNT(*) as count FROM sms_records').get();
         const callCount = db.prepare('SELECT COUNT(*) as count FROM call_records').get();
+        const recordingCount = db.prepare("SELECT COUNT(*) as count FROM recordings WHERE stored_name != ''").get();
         
         // 今日统计
         const todaySms = db.prepare(`
@@ -1543,6 +1546,10 @@ router.get('/stats', (req, res) => {
         const todayCalls = db.prepare(`
             SELECT COUNT(*) as count FROM call_records 
             WHERE date(created_at, '+8 hours') = date('now', '+8 hours')
+        `).get();
+        const todayRecordings = db.prepare(`
+            SELECT COUNT(*) as count FROM recordings
+            WHERE stored_name != '' AND date(uploaded_at) = date('now', 'localtime')
         `).get();
         
         res.json({
@@ -1560,6 +1567,10 @@ router.get('/stats', (req, res) => {
                 calls: {
                     total: callCount.count,
                     today: todayCalls.count
+                },
+                recordings: {
+                    total: recordingCount.count,
+                    today: todayRecordings.count
                 }
             }
         });

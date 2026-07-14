@@ -528,6 +528,12 @@
                 <div class="stat-value" id="stat-calls-today">-</div>
                 <div class="stat-detail" style="color: var(--text-secondary);">总计: <span id="stat-calls-total">0</span></div>
             </div>
+            <div class="stat-card">
+                <i data-lucide="mic" class="stat-card-icon"></i>
+                <div class="stat-label">今日录音</div>
+                <div class="stat-value" id="stat-recordings-today">-</div>
+                <div class="stat-detail" style="color: var(--text-secondary);">总计: <span id="stat-recordings-total">0</span></div>
+            </div>
         </div>
 
         <!-- 导航标签 -->
@@ -540,6 +546,9 @@
             </div>
             <div class="nav-item" onclick="App.UI.switchTab('calls', this)">
                 <i data-lucide="phone"></i> 通话记录
+            </div>
+            <div class="nav-item" onclick="App.UI.switchTab('recordings', this)">
+                <i data-lucide="mic"></i> 通话录音
             </div>
             <div class="nav-item" onclick="App.UI.switchTab('logs', this)">
                 <i data-lucide="file-text"></i> 消息日志
@@ -713,7 +722,57 @@
             </div>
         </div>
 
-        <!-- 页面 4: 消息日志 -->
+        <!-- 页面 4: 通话录音 -->
+        <div id="panel-recordings" class="page-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i data-lucide="mic" size="20"></i> 通话录音</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-danger" onclick="App.Modules.Recordings.deleteBatch()">
+                            <i data-lucide="trash-2" size="16"></i> 删除
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.Modules.Recordings.load()">
+                            <i data-lucide="refresh-cw" size="16"></i> 刷新
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="search-box">
+                        <div style="display:flex; gap:8px; width:100%;">
+                            <input type="text" class="form-control" id="recording-device" placeholder="设备ID" style="flex:1;">
+                            <input type="text" class="form-control" id="recording-phone" placeholder="对方号码" style="flex:1;">
+                            <button class="btn btn-primary btn-icon" onclick="App.Modules.Recordings.load()" style="width:auto; margin-top:0;">
+                                <i data-lucide="search" size="18"></i>
+                            </button>
+                        </div>
+                        <div style="display:flex; gap:8px; width:100%;">
+                            <select class="form-control" id="recording-slot" onchange="App.Modules.Recordings.load()">
+                                <option value="">全部卡槽</option>
+                                <option value="1">卡槽1</option>
+                                <option value="2">卡槽2</option>
+                            </select>
+                            <select class="form-control" id="recording-status" onchange="App.Modules.Recordings.load()">
+                                <option value="">全部状态</option>
+                                <option value="uploaded">文件已接收</option>
+                                <option value="confirmed">设备已确认</option>
+                                <option value="failed">上报失败</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="table-recordings">
+                            <thead><tr>
+                                <th style="width:40px;"><input type="checkbox" onchange="App.UI.toggleSelectAll(this, '#table-recordings')"></th>
+                                <th>设备</th><th>卡槽</th><th>对方号码</th><th>文件</th><th>大小</th><th>状态</th><th>事务ID</th><th>时间</th><th>操作</th>
+                            </tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页面 5: 消息日志 -->
         <div id="panel-logs" class="page-panel">
             <div class="card">
                 <div class="card-header">
@@ -1248,6 +1307,7 @@
                     if(panelId === 'devices') App.Modules.Devices.refresh();
                     if(panelId === 'sms') App.Modules.SMS.load();
                     if(panelId === 'calls') App.Modules.Calls.load();
+                    if(panelId === 'recordings') App.Modules.Recordings.load();
                     if(panelId === 'logs') App.Modules.Logs.load();
                     if(panelId === 'push') App.Modules.Push.load();
                 },
@@ -1399,6 +1459,8 @@
                                 document.getElementById('stat-sms-total').textContent = data.data.sms.total;
                                 document.getElementById('stat-calls-today').textContent = data.data.calls.today;
                                 document.getElementById('stat-calls-total').textContent = data.data.calls.total;
+                                document.getElementById('stat-recordings-today').textContent = data.data.recordings?.today || 0;
+                                document.getElementById('stat-recordings-total').textContent = data.data.recordings?.total || 0;
                             }
                         } catch (e) {
                             console.error('加载统计失败', e);
@@ -1702,6 +1764,78 @@
                         if (token) url += `&_auth=${encodeURIComponent(token)}`;
                         
                         window.open(App.config.apiBase + url, '_blank');
+                    }
+                },
+                Recordings: {
+                    async load() {
+                        const tbody = document.querySelector('#table-recordings tbody');
+                        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">加载中...</td></tr>';
+                        const devId = document.getElementById('recording-device').value.trim();
+                        const phoneNum = document.getElementById('recording-phone').value.trim();
+                        const slot = document.getElementById('recording-slot').value;
+                        const status = document.getElementById('recording-status').value;
+                        let url = '/api/recordings?limit=100';
+                        if (devId) url += `&devId=${encodeURIComponent(devId)}`;
+                        if (phoneNum) url += `&phoneNum=${encodeURIComponent(phoneNum)}`;
+                        if (slot) url += `&slot=${slot}`;
+                        if (status) url += `&status=${status}`;
+                        try {
+                            const result = await App.Utils.apiFetch(url);
+                            if (!result.success || result.data.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:#888;">暂无录音记录</td></tr>';
+                                return;
+                            }
+                            const auth = localStorage.getItem(App.config.authKey);
+                            tbody.innerHTML = result.data.map(item => {
+                                const statusMap = {
+                                    uploaded: ['文件已接收', 'badge-neutral'],
+                                    confirmed: ['设备已确认', 'badge-success'],
+                                    failed: ['上报失败', 'badge-danger']
+                                };
+                                const statusInfo = statusMap[item.status] || [item.status, 'badge-neutral'];
+                                const downloadUrl = App.config.apiBase + item.download_url + (auth ? `?_auth=${encodeURIComponent(auth)}` : '');
+                                const fileAction = item.has_file
+                                    ? `<a class="btn btn-success" style="padding:5px 9px;" href="${downloadUrl}" target="_blank"><i data-lucide="download" size="14"></i></a>`
+                                    : '<span style="color:#999;">无本地文件</span>';
+                                return `<tr>
+                                    <td><input type="checkbox" value="${item.id}"></td>
+                                    <td data-label="设备">${App.Utils.escapeHtml(item.dev_id || '-')}</td>
+                                    <td data-label="卡槽">${item.slot ? '卡' + item.slot : '-'}</td>
+                                    <td data-label="对方号码">${App.Utils.escapeHtml(item.phone_num || '-')}</td>
+                                    <td data-label="文件" title="${App.Utils.escapeHtml(item.original_name || item.media_id || '')}">${App.Utils.escapeHtml(item.original_name || item.media_id || '-')}</td>
+                                    <td data-label="大小">${this.formatSize(item.file_size)}</td>
+                                    <td data-label="状态"><span class="badge ${statusInfo[1]}" title="${App.Utils.escapeHtml(item.error_note || '')}">${statusInfo[0]}</span></td>
+                                    <td data-label="事务ID">${App.Utils.escapeHtml(item.tid || '-')}</td>
+                                    <td data-label="时间">${App.Utils.formatTime(item.uploaded_at || item.confirmed_at)}</td>
+                                    <td data-label="操作">${fileAction}</td>
+                                </tr>`;
+                            }).join('');
+                            lucide.createIcons();
+                        } catch (error) {
+                            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:red;">录音列表加载失败</td></tr>';
+                        }
+                    },
+                    formatSize(bytes) {
+                        const size = Number(bytes) || 0;
+                        if (size < 1024) return `${size} B`;
+                        if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+                        return `${(size / 1024 / 1024).toFixed(1)} MB`;
+                    },
+                    async deleteBatch() {
+                        const ids = App.UI.getSelectedIds('#table-recordings').map(Number);
+                        if (!ids.length) return App.UI.toast('请先选择录音', 'warning');
+                        if (!confirm(`确定删除选中的 ${ids.length} 条录音及文件吗？`)) return;
+                        try {
+                            const result = await App.Utils.apiFetch('/api/recordings/batch-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ ids })
+                            });
+                            if (!result.success) throw new Error(result.error || '删除失败');
+                            App.UI.toast(`已删除 ${result.deleted} 条录音`, 'success');
+                            this.load();
+                        } catch (error) {
+                            App.UI.toast(error.message || '删除失败', 'error');
+                        }
                     }
                 },
                 Logs: {

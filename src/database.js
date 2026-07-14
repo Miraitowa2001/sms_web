@@ -9,12 +9,11 @@ const fs = require('fs');
 const config = require('./config');
 
 // 确保数据目录存在
-const dataDir = path.join(__dirname, '../data');
+const dbPath = path.resolve(process.env.DATABASE_PATH || path.join(__dirname, '../data/lvyou.db'));
+const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
-
-const dbPath = path.join(dataDir, 'lvyou.db');
 
 let db = null;
 let SQL = null;
@@ -130,6 +129,30 @@ async function initDatabase() {
             updated_at TEXT DEFAULT (datetime('now', 'localtime'))
         )
     `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS recordings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_id TEXT DEFAULT '',
+            original_name TEXT DEFAULT '',
+            stored_name TEXT DEFAULT '',
+            file_size INTEGER DEFAULT 0,
+            dev_id TEXT DEFAULT '',
+            slot INTEGER,
+            phone_num TEXT DEFAULT '',
+            tid TEXT DEFAULT '',
+            tel_start_ts INTEGER,
+            tel_connected_ts INTEGER,
+            tel_end_ts INTEGER,
+            status TEXT DEFAULT 'uploaded',
+            error_note TEXT DEFAULT '',
+            uploaded_at TEXT DEFAULT (datetime('now', 'localtime')),
+            confirmed_at TEXT
+        )
+    `);
+    db.run('CREATE INDEX IF NOT EXISTS idx_recordings_media_id ON recordings(media_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_recordings_tid ON recordings(tid)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_recordings_dev_id ON recordings(dev_id)');
     
     // 初始化默认配置
     const channels = ['wecom', 'feishu', 'smtp'];

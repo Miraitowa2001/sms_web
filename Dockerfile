@@ -7,7 +7,7 @@ RUN apk add --no-cache tzdata
 ENV TZ=Asia/Shanghai
 
 COPY package.json package-lock.json ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 COPY . .
 

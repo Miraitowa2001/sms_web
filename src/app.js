@@ -12,6 +12,7 @@ const messageHandler = require('./messageHandler');
 const routes = require('./routes');
 const config = require('./config');
 const { decryptData } = require('./aesDecrypt');
+const recordingService = require('./recordingService');
 
 const app = express();
 const PORT = config.port;
@@ -22,6 +23,9 @@ const PORT = config.port;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 开发板录音文件上传接口使用独立密钥，不受管理端 Basic Auth 影响。
+app.post('/recordings/upload', recordingService.uploadAuth, recordingService.receiveUpload);
 
 // 2. 静态文件服务 (公开访问，无需鉴权)
 // 放在鉴权中间件之前，提高性能并避免鉴权逻辑干扰
@@ -168,6 +172,7 @@ app.get('/push', apiKeyAuth, (req, res) => {
 
 // --- 管理API (使用 basicAuth) ---
 // 直接挂载鉴权中间件到 /api 路径
+app.use('/api/recordings', basicAuth, recordingService.router);
 app.use('/api', basicAuth, routes);
 
 // --- 兜底路由 (SPA支持) ---
@@ -181,11 +186,13 @@ app.get('/{*splat}', (req, res) => {
 async function startServer() {
     // 初始化数据库
     await initDatabase();
+    recordingService.cleanupExpired();
     
     // 定时任务 - 每5分钟检查一次设备离线状态
     setInterval(() => {
         messageHandler.checkOfflineDevices(300);
     }, 5 * 60 * 1000);
+    setInterval(() => recordingService.cleanupExpired(), 6 * 60 * 60 * 1000);
     
     app.listen(PORT, () => {
         console.log('');
