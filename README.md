@@ -48,6 +48,56 @@ chmod +x start.sh
 
 > 更多 Docker 配置详情（如数据持久化、故障排查），请参阅 [Docker 部署指南](DOCKER_DEPLOY.md)。
 
+### PM2 常用维护命令
+
+当前使用 PM2 部署时，以下命令均在服务器的项目根目录执行。项目约定的进程名为
+`lvyou-server`。
+
+```bash
+# 查看进程状态
+pm2 status
+
+# 查看实时日志（Ctrl+C 只退出日志查看，不会停止服务）
+pm2 logs lvyou-server
+
+# 查看最近 100 行日志
+pm2 logs lvyou-server --lines 100 --nostream
+
+# 修改代码后重启
+pm2 restart lvyou-server
+
+# 修改 .env 或系统环境变量后重启并刷新环境变量
+pm2 restart lvyou-server --update-env
+
+# 停止/启动进程
+pm2 stop lvyou-server
+pm2 start lvyou-server
+
+# 删除进程（不会删除项目代码和 data 数据）
+pm2 delete lvyou-server
+```
+
+本次更新了录音上传路由代码，应执行：
+
+```bash
+cd /你的路径/sms_web
+pm2 restart lvyou-server
+pm2 logs lvyou-server --lines 100 --nostream
+```
+
+如果 `pm2 status` 中的进程名不是 `lvyou-server`，请把上述命令中的进程名替换为
+实际名称；也可以使用进程 ID，例如 `pm2 restart 0`。
+
+看到服务正常启动后，可验证未定义的 GET 上传地址返回 `404`：
+
+```bash
+curl -i "http://127.0.0.1:3000/recordings/upload?key=test"
+```
+
+真正上传录音仍须使用 `POST multipart/form-data`，不能用浏览器地址栏的 GET 请求。
+
+Docker 部署的构建、重启和日志命令见 [Docker 部署指南](DOCKER_DEPLOY.md)。
+
 ---
 
 ## 🛠️ 手动部署 (开发环境)

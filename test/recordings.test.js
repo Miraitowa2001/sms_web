@@ -55,6 +55,9 @@ test('录音上传、确认、下载和删除完整流程', async () => {
     try {
         await waitForServer(baseUrl, child);
 
+        const uploadPageResponse = await fetch(`${baseUrl}/recordings/upload?key=record-test-key`);
+        assert.equal(uploadPageResponse.status, 404);
+
         const unauthorized = new FormData();
         unauthorized.append('media', new Blob([Buffer.from('#!AMR\n1234')]), 'call_01.amr');
         const unauthorizedResponse = await fetch(`${baseUrl}/recordings/upload`, { method: 'POST', body: unauthorized });
