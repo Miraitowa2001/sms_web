@@ -88,6 +88,37 @@ pm2 logs lvyou-server --lines 100 --nostream
 如果 `pm2 status` 中的进程名不是 `lvyou-server`，请把上述命令中的进程名替换为
 实际名称；也可以使用进程 ID，例如 `pm2 restart 0`。
 
+PM2 应固定工作目录，避免相对数据路径随启动位置变化：
+
+```bash
+pm2 start src/app.js --name lvyou-server --cwd /home/haha/sms_web
+pm2 save
+```
+
+如果日志出现 `EACCES: permission denied, mkdir '/app/data'`，说明 PM2 部署误用了
+Docker 容器内的 `/app/data` 路径。将服务器项目的 `.env` 改为：
+
+```env
+DATABASE_PATH=/home/haha/sms_web/data/lvyou.db
+RECORDING_DIR=/home/haha/sms_web/data/recordings
+```
+
+然后确保目录属于运行 PM2 的用户，并删除旧进程以清除其缓存的 Docker 环境变量：
+
+```bash
+cd /home/haha/sms_web
+mkdir -p data/recordings
+chown -R haha:haha data
+pm2 delete lvyou-server
+DATABASE_PATH=/home/haha/sms_web/data/lvyou.db \
+RECORDING_DIR=/home/haha/sms_web/data/recordings \
+pm2 start src/app.js --name lvyou-server --cwd /home/haha/sms_web
+pm2 save
+pm2 logs lvyou-server --lines 100 --nostream
+```
+
+以上命令应由 `haha` 用户执行；只有 `chown` 因权限不足时才在其前面加 `sudo`。
+
 看到服务正常启动后，可验证未定义的 GET 上传地址返回 `404`：
 
 ```bash
